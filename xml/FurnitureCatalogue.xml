@@ -5,7 +5,7 @@
     <!-- Main Window -->
     <TopLevelControl name="FurCGui" clampedToScreen="true" movable="true" mouseEnabled="true"
       hidden="true" resizeHandleSize="10">
-      <DimensionConstraints minX="850" minY="200" maxY="2000" />
+      <DimensionConstraints minX="950" minY="200" maxY="2000" />
       <Anchor point="TOPRIGHT" relativeTo="GUI_ROOT" relativePoint="TOPRIGHT" offsetX="-25"
         offsetY="40" />
       <OnMoveStop>FurC.SaveFrameInfo("onMoveStop")</OnMoveStop>
@@ -262,9 +262,22 @@
                   </Controls>
                 </Label>
                 <!-- not sortable source description -->
+                <Label name="$(parent)_MMAvg" font="ZoFontGameSmall"
+                  text="MM Avg" horizontalAlignment="RIGHT">
+                  <Anchor point="TOPRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT"
+                    offsetX="-10" />
+                  <Dimensions y="20" x="100" />
+                </Label>
+                <Label name="$(parent)_CraftCost" font="ZoFontGameSmall"
+                  text="Craft Cost" horizontalAlignment="RIGHT">
+                  <Anchor point="TOPRIGHT" relativeTo="$(parent)_MMAvg" relativePoint="TOPLEFT"
+                    offsetX="-12" />
+                  <Dimensions y="20" x="100" />
+                </Label>
                 <Label name="$(parent)_Description" font="ZoFontGameSmall" text="Description">
                   <Anchor point="TOPLEFT" relativeTo="$(parent)_Name" relativePoint="TOPRIGHT" />
-                  <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="BOTTOMRIGHT" />
+                  <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)_CraftCost"
+                    relativePoint="BOTTOMLEFT" offsetX="-8" />
                 </Label>
               </Controls>
             </Control>
@@ -340,11 +353,21 @@
           <Dimensions y="50" x="280" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" offsetX="3" />
         </Label>
+        <Label name="$(parent)MMAvg" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
+          verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
+          <Dimensions y="50" x="90" />
+          <Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-5" />
+        </Label>
+        <Label name="$(parent)CraftCost" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
+          verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
+          <Dimensions y="50" x="90" />
+          <Anchor point="RIGHT" relativeTo="$(parent)MMAvg" relativePoint="LEFT" offsetX="-8" />
+        </Label>
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="1">
           <Dimensions y="50" />
           <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="21" />
-          <Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" />
+          <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>
       </Controls>
     </Control>
@@ -370,11 +393,21 @@
           <Dimensions y="50" x="230" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" />
         </Label>
+        <Label name="$(parent)MMAvg" font="ZoFontGame" wrapMode="ELLIPSIS"
+          verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
+          <Dimensions y="50" x="90" />
+          <Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" offsetX="-5" />
+        </Label>
+        <Label name="$(parent)CraftCost" font="ZoFontGame" wrapMode="ELLIPSIS"
+          verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
+          <Dimensions y="50" x="90" />
+          <Anchor point="RIGHT" relativeTo="$(parent)MMAvg" relativePoint="LEFT" offsetX="-8" />
+        </Label>
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="1">
           <Dimensions y="50" />
           <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="18" />
-          <Anchor point="RIGHT" relativeTo="$(parent)" relativePoint="RIGHT" />
+          <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>
       </Controls>
     </Control>

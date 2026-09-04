@@ -121,6 +121,67 @@ local function getMasterMerchantStats(itemLink)
   return nil
 end
 
+-- Master Merchant craft cost cache (keyed by itemLink). Cleared together
+-- with mmStatsCache whenever the visible data lines are rebuilt.
+-- MM 3.x does NOT expose a craftCost field on itemStats(); the crafting
+-- cost must be read from CraftCostPriceTip() (localized tooltip string,
+-- used for display) and itemCraftPrice() (raw number, used for sorting).
+-- Both derive the cost from the recipe that crafts the linked item, so the
+-- link must be the finished furnishing, never the recipe/plan link.
+local mmCraftCostCache = {}
+
+local function getMasterMerchantCraftCostTip(itemLink)
+  -- Localized craft cost tooltip line from MM, or nil.
+  if itemLink == nil or itemLink == "" then
+    return nil
+  end
+  local cached = mmCraftCostCache[itemLink]
+  if cached ~= nil then
+    return cached.tip
+  end
+  if MasterMerchant == nil or not MasterMerchant.isInitialized then
+    -- MM not installed / not ready yet: do not cache so values are picked
+    -- up once MM becomes available.
+    return nil
+  end
+  local tip = nil
+  if type(MasterMerchant.CraftCostPriceTip) == "function" then
+    local ok, result = pcall(MasterMerchant.CraftCostPriceTip, MasterMerchant, itemLink, false)
+    if ok and type(result) == "string" and result ~= "" then
+      tip = result
+    end
+  end
+  local entry = mmCraftCostCache[itemLink] or {}
+  entry.tip = tip
+  mmCraftCostCache[itemLink] = entry
+  return tip
+end
+
+local function getMasterMerchantCraftCostValue(itemLink)
+  -- Raw numeric craft cost from MM, or nil.
+  if itemLink == nil or itemLink == "" then
+    return nil
+  end
+  local cached = mmCraftCostCache[itemLink]
+  if cached ~= nil then
+    return cached.value
+  end
+  if MasterMerchant == nil or not MasterMerchant.isInitialized then
+    return nil
+  end
+  local value = nil
+  if type(MasterMerchant.itemCraftPrice) == "function" then
+    local ok, result = pcall(MasterMerchant.itemCraftPrice, MasterMerchant, itemLink)
+    if ok and type(result) == "number" and result > 0 then
+      value = result
+    end
+  end
+  local entry = mmCraftCostCache[itemLink] or {}
+  entry.value = value
+  mmCraftCostCache[itemLink] = entry
+  return value
+end
+
 local function updateLineVisibility()
   local function fillLine(curLine, curData, lineIndex)
     if nil == curLine then
@@ -158,16 +219,16 @@ local function updateLineVisibility()
       local mats = FurC.GetItemDescription(curData.itemId, curData, nil, { dateFormat = FurC.GetDateFormat() })
       curLine.mats:SetText(mats)
 
-      -- Master Merchant price columns. Both the sale average (avgPrice) and
-      -- the crafting cost (craftCost) are read for the finished furnishing
-      -- (curData.itemLink): MM computes craftCost from the recipe that crafts
-      -- the linked item, so it must be a product link, never a recipe/plan
-      -- link. nil / 0 (= no data) render as a blank.
+      -- Master Merchant price columns. The sale average (avgPrice) is read
+      -- for the finished furnishing (curData.itemLink) via itemStats(); the
+      -- craft cost is read via CraftCostPriceTip() on the same product link,
+      -- because MM derives it from the recipe that crafts the linked item.
+      -- nil (= no data) renders as a blank.
       local saleStats = getMasterMerchantStats(curData.itemLink)
       local mmAvg = (saleStats and saleStats.avgPrice) or nil
-      local craftCost = (saleStats and saleStats.craftCost) or nil
+      local craftCostTip = getMasterMerchantCraftCostTip(curData.itemLink)
 
-      curLine.craftCost:SetText((craftCost and craftCost > 0) and ZO_LocalizeDecimalNumber(craftCost) or "")
+      curLine.craftCost:SetText(craftCostTip or "")
       curLine.mmAvg:SetText((mmAvg and mmAvg > 0) and ZO_LocalizeDecimalNumber(mmAvg) or "")
     end
   end
@@ -250,10 +311,9 @@ local function buildSortedIndex(sortName, sortUp)
     return positiveOrNil(stats and stats.avgPrice)
   end
   local function getCraftCost(itemId)
-    -- MM derives craftCost from the recipe that crafts the item, so the link
-    -- must be the finished product (itemId), never the blueprint/recipe item.
-    local stats = getMasterMerchantStats(getItemLink(itemId))
-    return positiveOrNil(stats and stats.craftCost)
+    -- Numeric craft cost for sorting, via MM's itemCraftPrice() on the
+    -- finished product link (see getMasterMerchantCraftCostTip).
+    return positiveOrNil(getMasterMerchantCraftCostValue(getItemLink(itemId)))
   end
 
   for itemId, recipeArray in pairs(data) do
@@ -300,6 +360,7 @@ end
 
 local function updateScrollDataLinesData()
   mmStatsCache = {}
+  mmCraftCostCache = {}
   local dataLines = {}
   local data = FurC.DB
   local order = ensureSortedIndex()

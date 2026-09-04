@@ -17,6 +17,18 @@ local LFC = LibFurnitureCatalogue
 local src = LFC.API.GetSourceTypes()
 local ver = LFC.Internal.Constants.Versioning
 
+-- Some source types (DUNGEON, HARVEST, CHEST, QUEST, PICKPOCKET, CONTAINER)
+-- are referenced by the addon but may not be defined by the installed
+-- LibFurnitureCatalogue (e.g. an older or separately-installed lib version
+-- that predates these categories). Indexing a table with a nil key throws
+-- "table index is nil" and blocks the addon from loading, so guard every
+-- write keyed by a source id.
+local function assignSourceChoice(tbl, sourceId, value)
+  if sourceId ~= nil then
+    tbl[sourceId] = value
+  end
+end
+
 -- data from LibFurnitureCatalogue
 this.AchievementVendors = this.AchievementVendors or {}
 this.LuxuryFurnisher = this.LuxuryFurnisher or {}
@@ -121,12 +133,12 @@ local function getSourceIndicesKeys()
   sourceIndicesKeys[src.JUSTICE] = "justice"
   sourceIndicesKeys[src.FISHING] = "fishing"
   --sourceIndicesKeys[src.GUILDSTORE]       = "GUILDSTORE"
-  sourceIndicesKeys[src.DUNGEON] = "dungeon"
-  sourceIndicesKeys[src.HARVEST] = "harvest"
-  sourceIndicesKeys[src.CHEST] = "chests"
-  sourceIndicesKeys[src.QUEST] = "quest"
-  sourceIndicesKeys[src.PICKPOCKET] = "pickpocket"
-  sourceIndicesKeys[src.CONTAINER] = "container"
+  assignSourceChoice(sourceIndicesKeys, src.DUNGEON, "dungeon")
+  assignSourceChoice(sourceIndicesKeys, src.HARVEST, "harvest")
+  assignSourceChoice(sourceIndicesKeys, src.CHEST, "chests")
+  assignSourceChoice(sourceIndicesKeys, src.QUEST, "quest")
+  assignSourceChoice(sourceIndicesKeys, src.PICKPOCKET, "pickpocket")
+  assignSourceChoice(sourceIndicesKeys, src.CONTAINER, "container")
   sourceIndicesKeys[src.FESTIVAL_DROP] = "event"
 
   return sourceIndicesKeys
@@ -163,12 +175,12 @@ local function getChoicesSource()
   choicesSource[src.FISHING] = GetString(SI_FURC_FILTER_SRC_FISHING)
   --choicesSource[src.GUILDSTORE]       = "GUILDSTORE"
   choicesSource[src.FESTIVAL_DROP] = GetString(SI_FURC_FILTER_SRC_EVENT) -- Event
-  choicesSource[src.DUNGEON] = GetString(SI_FURC_FILTER_SRC_DUNGEON)
-  choicesSource[src.HARVEST] = GetString(SI_FURC_FILTER_SRC_HARVEST)
-  choicesSource[src.CHEST] = GetString(SI_FURC_FILTER_SRC_CHEST)
-  choicesSource[src.QUEST] = GetString(SI_FURC_FILTER_SRC_QUEST)
-  choicesSource[src.PICKPOCKET] = GetString(SI_FURC_FILTER_SRC_PICKPOCKET)
-  choicesSource[src.CONTAINER] = GetString(SI_FURC_FILTER_SRC_CONTAINER)
+  assignSourceChoice(choicesSource, src.DUNGEON, GetString(SI_FURC_FILTER_SRC_DUNGEON))
+  assignSourceChoice(choicesSource, src.HARVEST, GetString(SI_FURC_FILTER_SRC_HARVEST))
+  assignSourceChoice(choicesSource, src.CHEST, GetString(SI_FURC_FILTER_SRC_CHEST))
+  assignSourceChoice(choicesSource, src.QUEST, GetString(SI_FURC_FILTER_SRC_QUEST))
+  assignSourceChoice(choicesSource, src.PICKPOCKET, GetString(SI_FURC_FILTER_SRC_PICKPOCKET))
+  assignSourceChoice(choicesSource, src.CONTAINER, GetString(SI_FURC_FILTER_SRC_CONTAINER))
 
   return choicesSource
 end
@@ -203,12 +215,12 @@ local function getTooltipsSource()
   tooltipsSource[src.FISHING] = GetString(SI_FURC_FILTER_SRC_FISHING_TT)
   --tooltipsSource[src.GUILDSTORE]       = "GUILDSTORE"
   tooltipsSource[src.FESTIVAL_DROP] = GetString(SI_FURC_FILTER_SRC_EVENT) -- Event
-  tooltipsSource[src.DUNGEON] = GetString(SI_FURC_FILTER_SRC_DUNGEON)
-  tooltipsSource[src.HARVEST] = GetString(SI_FURC_FILTER_SRC_HARVEST)
-  tooltipsSource[src.CHEST] = GetString(SI_FURC_FILTER_SRC_CHEST)
-  tooltipsSource[src.QUEST] = GetString(SI_FURC_FILTER_SRC_QUEST)
-  tooltipsSource[src.PICKPOCKET] = GetString(SI_FURC_FILTER_SRC_PICKPOCKET)
-  tooltipsSource[src.CONTAINER] = GetString(SI_FURC_FILTER_SRC_CONTAINER)
+  assignSourceChoice(tooltipsSource, src.DUNGEON, GetString(SI_FURC_FILTER_SRC_DUNGEON))
+  assignSourceChoice(tooltipsSource, src.HARVEST, GetString(SI_FURC_FILTER_SRC_HARVEST))
+  assignSourceChoice(tooltipsSource, src.CHEST, GetString(SI_FURC_FILTER_SRC_CHEST))
+  assignSourceChoice(tooltipsSource, src.QUEST, GetString(SI_FURC_FILTER_SRC_QUEST))
+  assignSourceChoice(tooltipsSource, src.PICKPOCKET, GetString(SI_FURC_FILTER_SRC_PICKPOCKET))
+  assignSourceChoice(tooltipsSource, src.CONTAINER, GetString(SI_FURC_FILTER_SRC_CONTAINER))
 
   return tooltipsSource
 end

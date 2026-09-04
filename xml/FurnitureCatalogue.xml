@@ -262,17 +262,37 @@
                   </Controls>
                 </Label>
                 <!-- not sortable source description -->
-                <Label name="$(parent)_MMAvg" font="ZoFontGameSmall"
-                  text="MM Avg" horizontalAlignment="RIGHT">
+                <Label name="$(parent)_MMAvg" mouseEnabled="true" font="ZoFontGameSmall"
+                  text="prix de vente" horizontalAlignment="RIGHT">
                   <Anchor point="TOPRIGHT" relativeTo="$(parent)" relativePoint="TOPRIGHT"
                     offsetX="-10" />
                   <Dimensions y="20" x="100" />
+                  <OnMouseUp>FurC.GuiOnSort("MMAvg")</OnMouseUp>
+                  <Controls>
+                    <Button name="$(parent)_Button" verticalAlignment="LEFT" mouseEnabled="true">
+                      <Dimensions y="20" x="20" />
+                      <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                        offsetX="2" />
+                      <Textures normal="esoui/art/miscellaneous/list_sortheader_icon_neutral.dds"
+                        mouseOver="esoui/art/miscellaneous/list_sortheader_icon_over.dds" />
+                    </Button>
+                  </Controls>
                 </Label>
-                <Label name="$(parent)_CraftCost" font="ZoFontGameSmall"
+                <Label name="$(parent)_CraftCost" mouseEnabled="true" font="ZoFontGameSmall"
                   text="Craft Cost" horizontalAlignment="RIGHT">
                   <Anchor point="TOPRIGHT" relativeTo="$(parent)_MMAvg" relativePoint="TOPLEFT"
                     offsetX="-12" />
                   <Dimensions y="20" x="100" />
+                  <OnMouseUp>FurC.GuiOnSort("CraftCost")</OnMouseUp>
+                  <Controls>
+                    <Button name="$(parent)_Button" verticalAlignment="LEFT" mouseEnabled="true">
+                      <Dimensions y="20" x="20" />
+                      <Anchor point="TOPLEFT" relativeTo="$(parent)" relativePoint="TOPLEFT"
+                        offsetX="2" />
+                      <Textures normal="esoui/art/miscellaneous/list_sortheader_icon_neutral.dds"
+                        mouseOver="esoui/art/miscellaneous/list_sortheader_icon_over.dds" />
+                    </Button>
+                  </Controls>
                 </Label>
                 <Label name="$(parent)_Description" font="ZoFontGameSmall" text="Description">
                   <Anchor point="TOPLEFT" relativeTo="$(parent)_Name" relativePoint="TOPRIGHT" />

@@ -240,10 +240,38 @@ local sortedRevision
 local function buildSortedIndex(sortName, sortUp)
   local data = FurC.DB
   local ids, vals = {}, {}
+
+  -- MMAvg / CraftCost are runtime-computed (Master Merchant) values, not DB
+  -- fields, so they are computed here in the pre-sort pass via the same
+  -- getMasterMerchantStats helper used to render the columns. Sorting runs
+  -- before line rendering, so the value must be available now (it is: MM is
+  -- queried directly on a cache miss).
+  -- Display treats 0 / nil as a blank cell, so a 0 sort value must behave like
+  -- nil (sort to the end) to match what the user sees.
+  local function positiveOrNil(value)
+    return (value and value > 0) and value or nil
+  end
+  local function getMMAvg(itemId)
+    local stats = getMasterMerchantStats(getItemLink(itemId))
+    return positiveOrNil(stats and stats.avgPrice)
+  end
+  local function getCraftCost(itemId, recipeArray)
+    local blueprint = recipeArray and recipeArray.blueprint
+    if not blueprint then
+      return nil
+    end
+    local stats = getMasterMerchantStats(getItemLink(blueprint))
+    return positiveOrNil(stats and stats.craftCost)
+  end
+
   for itemId, recipeArray in pairs(data) do
     ids[#ids + 1] = itemId
     if sortName == "itemName" then
       vals[itemId] = GetItemLinkName(getItemLink(itemId))
+    elseif sortName == "MMAvg" then
+      vals[itemId] = getMMAvg(itemId)
+    elseif sortName == "CraftCost" then
+      vals[itemId] = getCraftCost(itemId, recipeArray)
     else
       vals[itemId] = recipeArray[sortName]
     end
@@ -447,6 +475,10 @@ local function createGui()
     FurCGui_ListHolder.lines = {}
     FurCGui_ListHolder.NameSort = FurCGui_Header_SortBar:GetNamedChild("_Name")
     FurCGui_ListHolder.NameSort.icon = FurCGui_ListHolder.NameSort:GetNamedChild("_Button")
+    FurCGui_ListHolder.MMAvgSort = FurCGui_Header_SortBar:GetNamedChild("_MMAvg")
+    FurCGui_ListHolder.MMAvgSort.icon = FurCGui_ListHolder.MMAvgSort:GetNamedChild("_Button")
+    FurCGui_ListHolder.CraftCostSort = FurCGui_Header_SortBar:GetNamedChild("_CraftCost")
+    FurCGui_ListHolder.CraftCostSort.icon = FurCGui_ListHolder.CraftCostSort:GetNamedChild("_Button")
 
     local predecessor
     for i = 1, FurCGui_ListHolder.maxLines do

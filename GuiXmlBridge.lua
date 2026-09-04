@@ -211,6 +211,14 @@ end
 local sortBy = nil
 local sortDirection = "down"
 
+-- Sort header buttons. $(parent)_Button under each header Label resolves to:
+--   FurCGui_Header_SortBar_Name_Button / _MMAvg_Button / _CraftCost_Button
+local SORT_BUTTON_NAMES = {
+  itemName  = "FurCGui_Header_SortBar_Name_Button",
+  MMAvg     = "FurCGui_Header_SortBar_MMAvg_Button",
+  CraftCost = "FurCGui_Header_SortBar_CraftCost_Button",
+}
+
 local function getButtonTex(key)
   if key ~= sortBy then
     return "esoui/art/miscellaneous/list_sortheader_icon_neutral.dds"
@@ -222,6 +230,15 @@ function FurC.GetSortParams()
   return sortBy, sortDirection
 end
 
+local function updateSortButtons()
+  for key, controlName in pairs(SORT_BUTTON_NAMES) do
+    local button = _G[controlName]
+    if button and button.SetNormalTexture then
+      button:SetNormalTexture(getButtonTex(key))
+    end
+  end
+end
+
 function FurC.GuiOnSort(key)
   -- set icon texture
   if sortBy and sortBy == key then
@@ -231,7 +248,7 @@ function FurC.GuiOnSort(key)
     sortDirection = "up"
   end
 
-  FurCGui_Header_SortBar_Name_Button:SetNormalTexture(getButtonTex("itemName"))
+  updateSortButtons()
 
   FurC.UpdateGui()
 end

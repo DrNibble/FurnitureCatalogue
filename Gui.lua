@@ -158,20 +158,14 @@ local function updateLineVisibility()
       local mats = FurC.GetItemDescription(curData.itemId, curData, nil, { dateFormat = FurC.GetDateFormat() })
       curLine.mats:SetText(mats)
 
-      -- Master Merchant price columns. The sale average (avgPrice) is read for
-      -- the finished furnishing (curData.itemLink, the same link used for the
-      -- name and icon); craftCost is sourced from the associated recipe/plan
-      -- (recipeArray.blueprint) when known, since MM's craftCost is only
-      -- meaningful for a recipe/plan. nil / 0 (= no data) render as a blank.
+      -- Master Merchant price columns. Both the sale average (avgPrice) and
+      -- the crafting cost (craftCost) are read for the finished furnishing
+      -- (curData.itemLink): MM computes craftCost from the recipe that crafts
+      -- the linked item, so it must be a product link, never a recipe/plan
+      -- link. nil / 0 (= no data) render as a blank.
       local saleStats = getMasterMerchantStats(curData.itemLink)
       local mmAvg = (saleStats and saleStats.avgPrice) or nil
-
-      local craftCostLink = nil
-      if recipeArray and recipeArray.blueprint then
-        craftCostLink = getItemLink(recipeArray.blueprint)
-      end
-      local craftStats = getMasterMerchantStats(craftCostLink)
-      local craftCost = (craftStats and craftStats.craftCost) or nil
+      local craftCost = (saleStats and saleStats.craftCost) or nil
 
       curLine.craftCost:SetText((craftCost and craftCost > 0) and ZO_LocalizeDecimalNumber(craftCost) or "")
       curLine.mmAvg:SetText((mmAvg and mmAvg > 0) and ZO_LocalizeDecimalNumber(mmAvg) or "")
@@ -255,12 +249,10 @@ local function buildSortedIndex(sortName, sortUp)
     local stats = getMasterMerchantStats(getItemLink(itemId))
     return positiveOrNil(stats and stats.avgPrice)
   end
-  local function getCraftCost(itemId, recipeArray)
-    local blueprint = recipeArray and recipeArray.blueprint
-    if not blueprint then
-      return nil
-    end
-    local stats = getMasterMerchantStats(getItemLink(blueprint))
+  local function getCraftCost(itemId)
+    -- MM derives craftCost from the recipe that crafts the item, so the link
+    -- must be the finished product (itemId), never the blueprint/recipe item.
+    local stats = getMasterMerchantStats(getItemLink(itemId))
     return positiveOrNil(stats and stats.craftCost)
   end
 
@@ -271,7 +263,7 @@ local function buildSortedIndex(sortName, sortUp)
     elseif sortName == "MMAvg" then
       vals[itemId] = getMMAvg(itemId)
     elseif sortName == "CraftCost" then
-      vals[itemId] = getCraftCost(itemId, recipeArray)
+      vals[itemId] = getCraftCost(itemId)
     else
       vals[itemId] = recipeArray[sortName]
     end

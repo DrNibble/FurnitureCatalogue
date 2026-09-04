@@ -164,19 +164,34 @@ local function matchVersionDropdown()
   return dropdownChoiceVersion == 1 or recipeArray.version == dropdownChoiceVersion
 end
 
-local validSourcesForOther = {
-  [src.FESTIVAL_DROP] = true,
-  [src.DROP] = true,
-  [src.FISHING] = true,
-  [src.GUILDSTORE] = true,
-  [src.ANTIQUITY] = true,
-  [src.DUNGEON] = true,
-  [src.HARVEST] = true,
-  [src.CHEST] = true,
-  [src.QUEST] = true,
-  [src.PICKPOCKET] = true,
-  [src.CONTAINER] = true,
-}
+-- Sources grouped under the "Other" dropdown filter. Built defensively: a few
+-- source names below (DUNGEON, HARVEST, CHEST, QUEST, PICKPOCKET, CONTAINER)
+-- are not yet defined in LibFurnitureCatalogue's ItemSources, and indexing src
+-- with a nil key would throw "table index is nil" at load time. Skip any source
+-- type that is not (yet) defined; if the constants are added later they are
+-- picked up automatically.
+local validSourcesForOther = {}
+do
+  local otherSourceNames = {
+    "FESTIVAL_DROP",
+    "DROP",
+    "FISHING",
+    "GUILDSTORE",
+    "ANTIQUITY",
+    "DUNGEON",
+    "HARVEST",
+    "CHEST",
+    "QUEST",
+    "PICKPOCKET",
+    "CONTAINER",
+  }
+  for _, sourceName in ipairs(otherSourceNames) do
+    local sourceId = src[sourceName]
+    if sourceId ~= nil then
+      validSourcesForOther[sourceId] = true
+    end
+  end
+end
 
 -- Multi-source: item matches filter if source is in list
 local function hasSource(s)

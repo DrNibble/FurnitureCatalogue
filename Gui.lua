@@ -156,6 +156,14 @@ local function getMasterMerchantCraftCostValue(itemLink)
   return value
 end
 
+-- Formats a gold amount rounded to the nearest integer, grouped with
+-- French-style thousands separators (spaces): 12069.895 -> "12 070".
+local function formatGoldAmount(value)
+  local rounded = math.floor((value or 0) + 0.5)
+  local reversed = tostring(rounded):reverse():gsub("(%d%d%d)", "%1 ")
+  return (reversed:reverse():gsub("^%s+", ""))
+end
+
 local function updateLineVisibility()
   local function fillLine(curLine, curData, lineIndex)
     if nil == curLine then
@@ -204,8 +212,8 @@ local function updateLineVisibility()
       local mmAvg = (saleStats and saleStats.avgPrice) or nil
       local craftCost = getMasterMerchantCraftCostValue(curData.itemLink)
 
-      curLine.craftCost:SetText((craftCost and craftCost > 0) and ZO_LocalizeDecimalNumber(craftCost) or "")
-      curLine.mmAvg:SetText((mmAvg and mmAvg > 0) and ZO_LocalizeDecimalNumber(mmAvg) or "")
+      curLine.craftCost:SetText((craftCost and craftCost > 0) and formatGoldAmount(craftCost) or "")
+      curLine.mmAvg:SetText((mmAvg and mmAvg > 0) and formatGoldAmount(mmAvg) or "")
     end
   end
 

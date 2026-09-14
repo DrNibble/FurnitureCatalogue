@@ -102,6 +102,7 @@ this.SourceFilters = {
   ALLIANCE_POINTS = -2,
   ACHIEVEMENT = -3,
   HOME_GOODS = -4,
+  CURRENCY = -5,
 }
 local filter = this.SourceFilters
 
@@ -121,6 +122,7 @@ local function getSourceIndicesKeys()
   sourceIndicesKeys[src.BAZAAR] = "purch_tbars"
   sourceIndicesKeys[src.TELVAR] = "purch_telvar"
   sourceIndicesKeys[src.TOMES] = "purch_tomepoints"
+  sourceIndicesKeys[filter.CURRENCY] = "currency"
   sourceIndicesKeys[src.CROWN] = "crownstore"
   sourceIndicesKeys[filter.CROWN_STORE] = "crown_store"
   sourceIndicesKeys[src.EDITOR] = "housing_editor"
@@ -129,7 +131,7 @@ local function getSourceIndicesKeys()
   sourceIndicesKeys[src.LUXURY] = "luxury"
   sourceIndicesKeys[src.OTHER] = "other"
   --sourceIndicesKeys[src.ROLIS]            = "ROLIS"
-  sourceIndicesKeys[src.DROP]             = "DROP"
+  sourceIndicesKeys[src.DROP] = "DROP"
   sourceIndicesKeys[src.JUSTICE] = "justice"
   sourceIndicesKeys[src.FISHING] = "fishing"
   --sourceIndicesKeys[src.GUILDSTORE]       = "GUILDSTORE"
@@ -161,6 +163,7 @@ local function getChoicesSource()
   choicesSource[src.TELVAR] = GetString(SI_FURC_FILTER_SRC_SOLD_TELVAR)
   choicesSource[src.BAZAAR] = GetString(SI_FURC_FILTER_SRC_SOLD_TBARS)
   choicesSource[src.TOMES] = GetString(SI_FURC_FILTER_SRC_SOLD_TOMEPOINTS)
+  choicesSource[filter.CURRENCY] = GetString(SI_FURC_FILTER_SRC_CURRENCY)
   choicesSource[src.CROWN] = GetString(SI_FURC_FILTER_SRC_CROWNS)
   -- SI_..._SRC_CROWN = crown store, SI_..._SRC_CROWNS = currency above it
   choicesSource[filter.CROWN_STORE] = GetString(SI_FURC_FILTER_SRC_CROWN)
@@ -202,6 +205,7 @@ local function getTooltipsSource()
   tooltipsSource[src.TELVAR] = GetString(SI_FURC_FILTER_SRC_SOLD_TELVAR_TT)
   tooltipsSource[src.BAZAAR] = GetString(SI_FURC_FILTER_SRC_SOLD_TBARS_TT)
   tooltipsSource[src.TOMES] = GetString(SI_FURC_FILTER_SRC_SOLD_TOMEPOINTS_TT)
+  tooltipsSource[filter.CURRENCY] = GetString(SI_FURC_FILTER_SRC_CURRENCY_TT)
   tooltipsSource[src.CROWN] = GetString(SI_FURC_FILTER_SRC_CROWNS_TT)
   tooltipsSource[filter.CROWN_STORE] = GetString(SI_FURC_FILTER_SRC_CROWN_TT)
   tooltipsSource[src.EDITOR] = GetString(SI_FURC_FILTER_SRC_EDITOR_TT)

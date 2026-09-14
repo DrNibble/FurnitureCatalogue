@@ -14,6 +14,22 @@ local getItemLink = api.GetItemLink
 local getDBRevision = api.GetDBRevision
 local furcInternal = FurC.Internal
 
+-- Right-click additive Source picks: session-only (never written to FurC.settings),
+-- shared with Filter.lua's matchSourceDropdown() via FurC.AdditiveSources.
+FurC.AdditiveSources = FurC.AdditiveSources or {}
+local additiveSources = FurC.AdditiveSources
+-- Same green LSM uses by default for expandable+selectable rows (LibScrollableMenu_Highlight_Green, 00ff00),
+-- reused as the persistent (non-hover) label color for a right-click pick.
+local ADDITIVE_SOURCE_COLOR = ZO_ColorDef:New("00ff00")
+local ADDITIVE_SOURCE_ICON = "esoui/art/cadwell/check.dds"
+
+local function toggleAdditiveSource(id, control, comboBox)
+  additiveSources[id] = not additiveSources[id] or nil
+  RefreshCustomScrollableMenu(control, LSM_UPDATE_MODE_BOTH, comboBox)
+  FurC.SetFilter()
+  FurC.UpdateGui()
+end
+
 -- LCK char list can change, we might have to manually update list if they don't show up
 function FurC.RefreshCharacterChoices()
   local dd = FurC.DropdownData
@@ -65,11 +81,14 @@ function FurC.CenterFilterBars()
     end
     local centerX = math.max(minX, math.min((barW - filterW) / 2, maxX))
     FurC_QualityFilter:ClearAnchors()
-    FurC_QualityFilter:SetAnchor(LEFT, bar2, LEFT, centerX)
+    -- anchor to the dropdown itself (not bar2) so LEFT's implicit vertical-center
+    -- lines the icon row up with the dropdown's center, not bar2's taller box center
+    local dropdownOffsetX = FurC_DropdownSource:GetLeft() - bar2:GetLeft()
+    FurC_QualityFilter:SetAnchor(LEFT, FurC_DropdownSource, LEFT, centerX - dropdownOffsetX)
   end
 
   local bar3 = FurCGui_Header_Bar3
-  if bar3 and FurC_TypeFilter and FurC_DropdownCharacter and FurC_SearchBox and FurC_ShowRumours then
+  if bar3 and FurC_TypeFilter and FurC_DropdownCharacter and FurC_SearchBox then
     local leftEdge = FurC_DropdownCharacter:GetRight() - bar3:GetLeft()
     local rightEdge = FurC_SearchBox:GetLeft() - bar3:GetLeft()
     local filterW = FurC_TypeFilter:GetWidth()
@@ -416,7 +435,8 @@ function FurC.SetLineHeight(applyTemplate)
   local matsFont = string.format("$(MEDIUM_FONT)|$(KB_%s)|soft-shadow-thin", size)
 
   local useTinyUi = FurC.GetTinyUi()
-  local lineHeight = size + (useTinyUi and 8 or 20)
+  local singleLineHeight = size + (useTinyUi and 8 or 20)
+  local lineHeight = singleLineHeight + size -- +1 font-size worth of room for the wrapped 2nd description line
 
   for i = 1, #FurCGui_ListHolder.lines do
     curLine = FurCGui_ListHolder.lines[i]
@@ -736,7 +756,7 @@ local function createGui()
     return control
   end
   
-    local function buildSourceEntries(nodes, choices, tooltips, selectSource)
+  local function buildSourceEntries(nodes, choices, tooltips, selectSource)
     local entries = {}
     for _, node in ipairs(nodes) do
       local label = (node.id and choices[node.id]) or (node.stringId and GetString(node.stringId))
@@ -752,6 +772,17 @@ local function createGui()
           local id = node.id
           entry.callback = function()
             selectSource(label, id)
+          end
+          if id ~= src.NONE then
+            entry.contextMenuCallback = function(comboBox, control, data)
+              toggleAdditiveSource(id, control, comboBox)
+            end
+            entry.color = function()
+              return additiveSources[id] and ADDITIVE_SOURCE_COLOR or nil
+            end
+            entry.icon = function()
+              return additiveSources[id] and ADDITIVE_SOURCE_ICON or nil
+            end
           end
         end
         entries[#entries + 1] = entry
@@ -774,6 +805,9 @@ local function createGui()
     end
 
     local function selectSource(label, id)
+      for extraId in pairs(additiveSources) do
+        additiveSources[extraId] = nil
+      end
       FurC.SetDropdownChoice("Source", label, id)
       FurC.UpdateDropdownChoice("Source")
       PlaySound(SOUNDS.POSITIVE_CLICK)
@@ -790,6 +824,20 @@ local function createGui()
         end)
         item.furcId = node.id
         item.tooltip = node.id and tooltips[node.id]
+        if node.id then
+          local id = node.id
+          if id ~= src.NONE then
+            item.contextMenuCallback = function(comboBox, control, data)
+              toggleAdditiveSource(id, control, comboBox)
+            end
+            item.color = function()
+              return additiveSources[id] and ADDITIVE_SOURCE_COLOR or nil
+            end
+            item.icon = function()
+              return additiveSources[id] and ADDITIVE_SOURCE_ICON or nil
+            end
+          end
+        end
         if node.children then
           item.entries = buildSourceEntries(node.children, choices, tooltips, selectSource)
         end
@@ -828,30 +876,6 @@ local function createGui()
   FurC.InitFilters()
   FurC.UpdateDropdowns()
 
-  -- reanchor it once
-  FurC.SetHideUIButton(src.RUMOUR, FurC.GetHideUIButton(src.RUMOUR))
-  FurC.UpdateHeader()
-end
-
-function FurC.UpdateHeader()
-  local hideRumourButton = FurC.GetHideUIButton(src.RUMOUR)
-  local showRumours = FurC.GetShowRumours()
-
-  FurC_ShowRumours:SetHidden(hideRumourButton)
-  FurC_ShowRumoursGlow:SetHidden(not showRumours or hideRumourButton)
-
-  if not hideRumourButton then
-    FurC_ShowRumours:SetState((showRumours and BSTATE_PRESSED) or BSTATE_NORMAL, false)
-  end
-
-  local hideCrownButton = FurC.GetHideUIButton(src.CROWN)
-
-  FurC_ShowCrowns:SetHidden(hideCrownButton)
-  if hideCrownButton then
-    return
-  end
-
-  FurC_ShowCrowns:SetState((FurC.GetShowCrownstore() and BSTATE_PRESSED) or BSTATE_NORMAL, false)
 end
 
 function FurnitureCatalogue_Toggle()

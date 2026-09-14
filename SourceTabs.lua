@@ -17,7 +17,7 @@ local SOURCE_TREE = {
   },
   { id = src.WRIT_VENDOR },
   {
-    stringId = SI_FURC_FILTER_SRC_CURRENCY,
+    id = FurC.SourceFilters.CURRENCY,
     children = {
       {
         id = src.CROWN,
@@ -54,7 +54,7 @@ local SOURCE_TREE = {
         id = src.JUSTICE,
         children = {
           { id = src.PICKPOCKET },
-          { id = src.CONTAINER },
+          { id = src.STEAL_CONTAINER },
         },
       },
       { id = src.DUNGEON },
@@ -66,7 +66,7 @@ local SOURCE_TREE = {
     },
     catchAll = true, -- still adopts anything genuinely unplaced (e.g. GUILDSTORE)
   },
-    { id = src.RUMOUR },
+  { id = src.RUMOUR },
 }
 
 FurC.SourceTree = SOURCE_TREE

@@ -13,7 +13,7 @@
 #   - python3 with libs from .scripts/requirements.txt
 #       (pip install -r .scripts/requirements.txt)
 #   - StyLua is auto-fetched (pinned to the CI version) by .scripts/stylua.sh
-#   - Optional .env file in repo root, see env.example
+#   - Optional .env file in script root, see env.example
 
 set -euo pipefail
 
@@ -23,6 +23,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
+
+# Must match package.py's ADDON_NAME: it names the archive <ADDON_NAME>-<Version>.zip
+ADDON_NAME="FurnitureCatalogue"
 
 # ------------------------------------------
 # load optional .env
@@ -75,7 +78,6 @@ command -v "$PY" >/dev/null || { echo "🔥 python3 not found ($PY). Set PYTHON3
 # ------------------------------------------
 echo "[build] regenerate autocomplete defs"
 "$PY" .scripts/luaDoc_generateStr.py locale/en.lua
-"$PY" .scripts/luaDoc_generateStr.py LibFurnitureCatalogue/locale/en.lua
 "$PY" .scripts/luaDoc_generateGui.py xml/FurnitureCatalogue.xml docs/autocomplete_definitions.lua
 "$PY" .scripts/luaDoc_generateGui.py FurnitureCatalogue_DevUtility/xml.xml docs/autocomplete_definitions.lua
 
@@ -83,10 +85,6 @@ echo "[build] regenerate translation files"
 for langfile in locale/*.lua; do
   [[ "$langfile" == "locale/en.lua" ]] && continue
   "$PY" .scripts/luaDoc_generateStr.py locale/en.lua "$langfile" --generate-translation
-done
-for langfile in LibFurnitureCatalogue/locale/*.lua; do
-  [[ "$langfile" == "LibFurnitureCatalogue/locale/en.lua" ]] && continue
-  "$PY" .scripts/luaDoc_generateStr.py LibFurnitureCatalogue/locale/en.lua "$langfile" --generate-translation
 done
 
 # ------------------------------------------
@@ -117,8 +115,8 @@ rm -f "$CHANGED_TMP"
 
 echo "[build] package zip"
 "$PY" .scripts/package.py
-ZIP="$(ls -1 *.zip | head -1)"
-test -s "$ZIP" || { echo "🔥 package.py produced no zip" >&2; exit 1; }
+ZIP="${ADDON_NAME}-${RELEASE_VERSION}.zip"
+test -s "$ZIP" || { echo "🔥 package.py produced no $ZIP" >&2; exit 1; }
 
 mkdir -p .dist
 mv "$ZIP" ".dist/$ZIP"

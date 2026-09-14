@@ -37,6 +37,17 @@
                     pressed="esoui/art/mail/mail_tabicon_compose_down.dds"
                     mouseOver="esoui/art/mail/mail_tabicon_compose_over.dds" />
                 </Button>
+                <Button name="$(parent)_Settings">
+                  <Anchor point="TOPLEFT" relativeTo="$(parent)_Feedback" relativePoint="TOPRIGHT"
+                    offsetX="7" offsetY="2" />
+                  <OnMouseEnter>FurC.GuiShowTooltip(self, "Open settings")</OnMouseEnter>
+                  <OnMouseExit>FurC.GuiHideTooltip(self)</OnMouseExit>
+                  <OnMouseUp>FurC.GUIButtonSettingsOnMouseUp()</OnMouseUp>
+                  <Dimensions x="35" y="35" />
+                  <Textures normal="/esoui/art/treeicons/achievements_indexicon_summary_up.dds"
+                    pressed="/esoui/art/treeicons/achievements_indexicon_summary_down.dds"
+                    mouseOver="/esoui/art/treeicons/achievements_indexicon_summary_over.dds" />
+                </Button>
                 <Control name="FurC_Label" resizeToFitDescendents="true">
                   <Anchor point="TOP" relativeTo="$(parent)" relativePoint="TOP" offsetX="0"
                     offsetY="10" />
@@ -46,7 +57,7 @@
                     <!-- FurC_Header_Bar1's children -->
                     <Label name="$(parent)_1" font="$(STONE_TABLET_FONT)|28|soft-shadow-thick"
                       text="- Furniture Catalogue: ">
-                      <Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" offsetX="-40" />
+                      <Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" />
                     </Label>
                     <Label name="FurC_RecipeCount" font="$(STONE_TABLET_FONT)|24|soft-shadow-thick"
                       mouseEnabled="true">
@@ -194,32 +205,6 @@
                     </EditBox>
                   </Controls>
                 </Control>
-                <Button name="FurC_ShowRumours">
-                  <Dimensions x="30" y="35" />
-                  <Anchor point="RIGHT" relativeTo="FurC_Search" relativePoint="RIGHT" offsetY="3" />
-                  <Textures normal="esoui/art/chatwindow/chat_notification_disabled.dds"
-                    pressed="esoui/art/chatwindow/chat_notification_echo.dds"
-                    mouseOver="esoui/art/chatwindow/chat_notification_over.dds" />
-                  <OnMouseEnter>FurC.GuiShowTooltip(self, FurC.GetRumourTooltip())  </OnMouseEnter>
-                  <OnMouseExit>FurC.GuiHideTooltip(self)  </OnMouseExit>
-                  <OnMouseUp>FurC.SetShowRumours(not FurC.GetShowRumours())  </OnMouseUp>
-                </Button>
-                <Button name="FurC_ShowCrowns">
-                  <Dimensions x="30" y="25" />
-                  <Anchor point="RIGHT" relativeTo="FurC_ShowRumours" relativePoint="LEFT"
-                    offsetX="8" />
-                  <Textures normal="esoui/art/bank/bank_tabicon_gold_up.dds"
-                    pressed="esoui/art/bank/bank_tabicon_gold_down.dds"
-                    mouseOver="esoui/art/bank/bank_tabicon_gold_over.dds" />
-                  <OnMouseEnter>FurC.GuiShowTooltip(self, FurC.GetCrownTooltip())  </OnMouseEnter>
-                  <OnMouseExit>FurC.GuiHideTooltip(self)  </OnMouseExit>
-                  <OnMouseUp>FurC.SetShowCrownstore(not FurC.GetShowCrownstore())  </OnMouseUp>
-                </Button>
-                <Texture name="FurC_ShowRumoursGlow"
-                  textureFile="esoui/art/chatwindow/chat_notification_glow.dds">
-                  <Anchor point="CENTER" relativeTo="FurC_ShowRumours" relativePoint="CENTER" />
-                  <Dimensions x="60" y="60" />
-                </Texture>
               </Controls>
             </Control>
             <!-- Category filter bar -->
@@ -364,13 +349,19 @@
           <AnchorFill />
           <TextureCoords left="0" right="1" top="0" bottom=".8125" />
         </Texture>
+        <Texture name="$(parent)Divider"
+          color="AD8B5D" alpha="0.55">
+          <Dimensions y="1" />
+          <Anchor point="BOTTOMLEFT" relativeTo="$(parent)" relativePoint="BOTTOMLEFT" />
+          <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="BOTTOMRIGHT" />
+        </Texture>
         <Button name="$(parent)Button" inherits="ZO_InventorySlotNoMouseover" hidden="false">
           <Dimensions x="40" y="40" />
           <Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" />
         </Button>
         <Label name="$(parent)Name" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
           verticalAlignment="CENTER" maxLineCount="1">
-          <Dimensions y="50" x="280" />
+          <Dimensions y="70" x="280" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" offsetX="3" />
         </Label>
         <Label name="$(parent)MMAvg" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
@@ -384,8 +375,8 @@
           <Anchor point="RIGHT" relativeTo="$(parent)MMAvg" relativePoint="LEFT" offsetX="-8" />
         </Label>
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
-          maxLineCount="1">
-          <Dimensions y="50" />
+          maxLineCount="2">
+          <Dimensions y="70" />
           <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="21" />
           <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>
@@ -404,13 +395,19 @@
           <AnchorFill />
           <TextureCoords left="0" right="1" top="0" bottom=".8125" />
         </Texture>
+        <Texture name="$(parent)Divider"
+          color="AD8B5D" alpha="0.55">
+          <Dimensions y="1" />
+          <Anchor point="BOTTOMLEFT" relativeTo="$(parent)" relativePoint="BOTTOMLEFT" />
+          <Anchor point="BOTTOMRIGHT" relativeTo="$(parent)" relativePoint="BOTTOMRIGHT" />
+        </Texture>
         <Button name="$(parent)Button" inherits="ZO_InventorySlotNoMouseover" hidden="true">
           <Dimensions x="1" />
           <Anchor point="LEFT" relativeTo="$(parent)" relativePoint="LEFT" />
         </Button>
         <Label name="$(parent)Name" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="1">
-          <Dimensions y="50" x="230" />
+          <Dimensions y="60" x="230" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" />
         </Label>
         <Label name="$(parent)MMAvg" font="ZoFontGame" wrapMode="ELLIPSIS"
@@ -424,8 +421,8 @@
           <Anchor point="RIGHT" relativeTo="$(parent)MMAvg" relativePoint="LEFT" offsetX="-8" />
         </Label>
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
-          maxLineCount="1">
-          <Dimensions y="50" />
+          maxLineCount="2">
+          <Dimensions y="60" />
           <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="18" />
           <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>

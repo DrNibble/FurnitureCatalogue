@@ -53,11 +53,10 @@ if not _G.LocalizeString then
     if type(fmt) ~= "string" then
       return tostring(fmt)
     end
-    local args, i = { ... }, 0
-    -- won't work on most substitutions.. just test against english strings if at all
-    return (fmt:gsub("<<%a?%d>>", function()
-      i = i + 1
-      return tostring(args[i])
+    local args = { ... }
+    -- grammar markers are the game's job
+    return (fmt:gsub("<<%a*:?(%d)>>", function(n)
+      return tostring(args[tonumber(n)])
     end))
   end
 end
@@ -78,9 +77,12 @@ if not _G.zo_strsplit then
   end
 end
 
--- placeholder name returner
+-- placeholder name returner (id 0 means "nothing of this kind")
 local function name_api(name)
   return function(id)
+    if id == 0 then
+      return ""
+    end
     return name .. "(" .. tostring(id) .. ")"
   end
 end
@@ -92,20 +94,59 @@ for _, name in ipairs({
   "GetUnitName",
   "GetAchievementLink",
   "GetZoneNameById",
+  "GetFurnitureCategoryInfo",
 }) do
   if not _G[name] then
     _G[name] = name_api(name)
   end
 end
 
-_G.ZO_CreateStringId = _G.ZO_CreateStringId or function(id, value)
-  _G[id] = value
+-- Furnishing category vocabulary: a small fake tree, enough for a consumer that
+-- enumerates it. Ids are spread so a category and a subcategory never collide.
+_G.GetNumFurnitureCategories = _G.GetNumFurnitureCategories or function()
+  return 3
 end
+_G.GetFurnitureCategoryId = _G.GetFurnitureCategoryId or function(categoryIndex)
+  return categoryIndex
+end
+_G.GetNumFurnitureSubcategories = _G.GetNumFurnitureSubcategories or function()
+  return 2
+end
+_G.GetFurnitureSubcategoryId = _G.GetFurnitureSubcategoryId
+  or function(categoryIndex, subcategoryIndex)
+    return 100 * categoryIndex + subcategoryIndex
+  end
 
--- Numeric ID from ZO_CreateStringId ingame,just returns string when headless
+-- Locale strings, modelled the way the client does it: ZO_CreateStringId puts a
+-- NUMBER in the global and GetString resolves it back to the text.
+--
+-- The earlier stub put the text straight into the global, which made an id and its
+-- rendered text the same value - so a record publishing GetString(id) instead of id
+-- was indistinguishable from one publishing the id, and any test for that stayed
+-- green over the defect. The de-baked source records are exactly that contract.
 do
+  local strings = {}
+  local nextStringId = 1048576
+
+  local realCreate = _G.ZO_CreateStringId
+  _G.ZO_CreateStringId = function(id, value, ...)
+    if realCreate then
+      realCreate(id, value, ...)
+    end
+    if type(_G[id]) ~= "number" then
+      _G[id] = nextStringId
+      nextStringId = nextStringId + 1
+    end
+    strings[_G[id]] = value
+  end
+
   local realGetString = _G.GetString
   _G.GetString = function(stringId, ...)
+    if strings[stringId] then
+      return strings[stringId]
+    end
+    -- a string id we were handed as text: pass it through rather than blanking it,
+    -- so a client-defined SI_* the stubs never saw still renders as something
     if type(stringId) == "string" then
       return stringId
     end

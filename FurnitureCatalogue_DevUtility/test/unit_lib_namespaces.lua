@@ -5,7 +5,7 @@ if not Taneth then
   return
 end
 
-Taneth("FurC:Unit", function()
+Taneth("FurC:Lib", function()
   describe("lib namespaces", function()
     it("lib internal namespaces carry only their own symbols", function()
       local internal = LibFurnitureCatalogue.Internal
@@ -13,6 +13,7 @@ Taneth("FurC:Unit", function()
         FurCDev.Test.nameSet({
           "DescribeSource",
           "Find",
+          "FindWithKey",
           "GetAchievementVendorSource",
           "GetCraftingSkillType",
           "GetEventDropSource",
@@ -28,6 +29,7 @@ Taneth("FurC:Unit", function()
           "GetRolisSource",
           "GetRumourSource",
           "GetSourceRecords",
+          "OriginOf",
           "ResolveRecipe",
         }),
         FurCDev.Test.keySet(internal.Query)
@@ -40,15 +42,18 @@ Taneth("FurC:Unit", function()
           "FmtDungeon",
           "FmtGeneric",
           "FmtQuest",
+          "FmtQuestReq",
           "FmtRank",
           "FmtScrying",
           "FmtSources",
           "FormatAchievement",
+          "FormatCollectible",
           "FormatEvent",
           "FormatFurnisher",
           "FormatHouses",
+          "FormatItemBundle",
+          "FormatItemPack",
           "FormatPartOf",
-          "FormatPieces",
           "FormatPrice",
           "GetItemId",
           "GetItemLink",
@@ -56,8 +61,6 @@ Taneth("FurC:Unit", function()
           "JoinSources",
           "MergeTable",
           "STRIP_CONTROL",
-          "SourceSeparator",
-          "SplitFirstSource",
           "stripTxt",
         }),
         FurCDev.Test.keySet(internal.Format)

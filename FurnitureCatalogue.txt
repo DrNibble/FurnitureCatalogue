@@ -12,6 +12,7 @@
 ## OptionalDependsOn: LibDebugLogger
 ## OptionalDependsOn: LibDebugViewer
 ## OptionalDependsOn: LibCharacterKnowledge
+## OptionalDependsOn: MasterMerchant
 
 locale\en.lua
 locale\$(language).lua

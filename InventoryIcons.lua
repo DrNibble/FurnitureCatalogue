@@ -1,6 +1,7 @@
 -- Inventory recipe icons: known/unknown markers on inventory rows
 
 local LFC = LibFurnitureCatalogue
+local getEntry = LFC.API.GetEntry
 local getItemId = LFC.API.GetItemId
 
 local wm = WINDOW_MANAGER
@@ -37,7 +38,7 @@ end
 
 local function getItemKnowledge(itemLink)
   local itemId = getItemId(itemLink)
-  local recipeArray = FurC.Find(itemLink)
+  local recipeArray = getEntry(itemLink)
   if FurC.GetUseInventoryIconsOnChar() then
     return FurC.CanCraft(itemId, recipeArray)
   end
@@ -99,10 +100,13 @@ function FurC.SetupInventoryRecipeIcons(calledRecursively)
   end
 
   local inventories = PLAYER_INVENTORY.inventories
-  if not inventories and not calledRecursively then
-    return zo_callLater(function()
-      FurC.SetupInventoryRecipeIcons(true)
-    end, 1000)
+  if not inventories then
+    if not calledRecursively then
+      zo_callLater(function()
+        FurC.SetupInventoryRecipeIcons(true)
+      end, 1000)
+    end
+    return
   end
   -- ruthlessly stolen from Dryzler's Inventory, then tweaked
   for bagId, inventory in pairs(inventories) do

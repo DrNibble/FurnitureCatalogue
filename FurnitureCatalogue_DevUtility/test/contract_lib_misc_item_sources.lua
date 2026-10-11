@@ -29,6 +29,18 @@ Taneth("FurC:Lib", function()
     return false
   end
 
+  ---The line the add-on writes for one source of an item. The library writes none any more
+  ---@return string|nil line
+  local function addonLine(itemId, source)
+    local entry = LFC.API.GetEntry(itemId)
+    for _, line in ipairs(FurC.SourceFormat.FormatItem(itemId, entry)) do
+      if line.source == source then
+        return line.text
+      end
+    end
+    return nil
+  end
+
   ---Every row this file owns, as { version, source, itemId, row }
   local function ownedRows()
     local rows = {}
@@ -100,13 +112,14 @@ Taneth("FurC:Lib", function()
       end
     end)
 
-    it("render a line naming the zone the row points at", function()
+    it("reach a line naming the zone the row points at", function()
       local checked = 0
       for _, found in ipairs(ownedRows()) do
         local row = found.row
         if type(row) == "table" and row.location ~= nil then
-          local line = query.GetMiscItemSource(found.itemId, { version = found.version }, false, found.source)
+          local line = addonLine(found.itemId, found.source)
           local zoneName = constants.Resolvers.Zone(row.location)
+          assert.is_not_nil(line, string.format("row %s reaches no line", found.itemId))
           assert.is_true(
             line:find(zoneName, 1, true) ~= nil,
             string.format("row %s renders %q, which does not name %s", found.itemId, line, zoneName)
@@ -119,30 +132,27 @@ Taneth("FurC:Lib", function()
 
     -- A list inside one qualifier field is alternatives ("A or B"), additional qualifiers are concatenated
     it("render a further qualifier after a list of alternatives, not inside it", function()
+      local line = FurC.SourceFormat.FormatRecord({
+        source = {
+          type = src.DROP,
+          note = { SI_FURC_SRC_CHESTS, SI_FURC_SRC_SAFEBOX },
+          rarity = SI_FURC_RARITY_RARE,
+        },
+      }, 1)
       local conjunction = string.format(" %s ", GetString(SI_FURC_GRAMMAR_CONJ_OR))
-      local checked = 0
-      for _, found in ipairs(ownedRows()) do
-        local row = found.row
-        local alternatives = type(row) == "table" and type(row.note) == "table" and row.note[1] ~= nil
-        if alternatives and row.rarity ~= nil then
-          local line = query.GetMiscItemSource(found.itemId, { version = found.version }, false, found.source)
-          local where = string.format("row %s renders %q", found.itemId, line)
-          local joinAt = line:find(conjunction, 1, true)
-          local rarityAt = line:find(GetString(row.rarity), 1, true)
-          assert.is_true(joinAt ~= nil, where .. ", which does not join its alternatives")
-          assert.is_true(rarityAt ~= nil, where .. ", which drops the rarity")
-          assert.is_true(joinAt < rarityAt, where .. ", making the rarity one of the alternatives")
-          checked = checked + 1
-        end
-      end
-      assert.is_true(checked > 0, "no row carries both a list of alternatives and a rarity")
+      local rare = GetString(SI_FURC_RARITY_RARE)
+      assert.is_not_nil(line:find(conjunction, 1, true), line)
+      -- the rarity is its own qualifier, set apart by a comma
+      assert.is_not_nil(line:find(rare .. ", ", 1, true) or line:find(", " .. rare, 1, true), line)
+      assert.is_nil(line:find(conjunction .. rare, 1, true), line)
+      assert.is_nil(line:find(rare .. conjunction, 1, true), line)
     end)
 
-    it("render every row to a line of its own", function()
+    it("reach a line of their own, one per row", function()
       for _, found in ipairs(ownedRows()) do
         if type(found.row) == "table" then
-          local line = query.GetMiscItemSource(found.itemId, { version = found.version }, false, found.source)
-          assert.equals("string", type(line), string.format("row %s rendered %s", found.itemId, type(line)))
+          local line = addonLine(found.itemId, found.source)
+          assert.equals("string", type(line), string.format("row %s reached %s", found.itemId, type(line)))
           assert.is_true(#line > 0, string.format("row %s rendered empty", found.itemId))
           assert.is_true(
             line ~= GetString(SI_FURC_SRC_EMPTY),

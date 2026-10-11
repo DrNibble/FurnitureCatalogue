@@ -8,16 +8,25 @@ Taneth("FurC:Unit", function()
   -- id far outside any real item range; FurC.Find must miss
   local UNKNOWN_ID = 99999999 -- TODO: or maybe id = 1?
 
-  describe("FurC.Find miss contract", function()
-    it("returns an empty table (never nil) for unknown ids", function()
+  describe("miss contracts", function()
+    it("the published lookup answers nil for an unknown id", function()
       FurCDev.Test.ensureDB()
-      local entry = FurC.Find(UNKNOWN_ID)
+      assert.is_nil(LibFurnitureCatalogue.API.GetEntry(UNKNOWN_ID))
+    end)
+
+    it("the internal lookup answers an empty table on a miss, never nil", function()
+      FurCDev.Test.ensureDB()
+      local entry = LibFurnitureCatalogue.Internal.Query.Find(UNKNOWN_ID)
       assert.equals("table", type(entry))
       assert.is_nil(next(entry))
+      -- published, and empty: a consumer that never migrated must not call a nil value
+      assert.equals("function", type(FurC.Find), "the landing pad is gone")
+      assert.is_nil(next(FurC.Find(UNKNOWN_ID)), "the landing pad answers data")
+      assert.is_nil(next(FurC.Find(FurCDev.Test.dataset().dbItem)), "the landing pad reads the DB")
     end)
 
     it("gives an empty description for unknown ids", function()
-      assert.equals("", FurC.GetItemDescription(UNKNOWN_ID))
+      assert.equals("", LibFurnitureCatalogue.API.GetItemDescription(UNKNOWN_ID))
     end)
   end)
 

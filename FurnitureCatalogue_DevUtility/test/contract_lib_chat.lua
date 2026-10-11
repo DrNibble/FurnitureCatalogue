@@ -15,6 +15,7 @@ Taneth("FurC:Lib", function()
   describe("LibFurnitureCatalogue chat commands", function()
     local LFC = LibFurnitureCatalogue
     local chat = LFC.Internal.Chat
+    local build = LFC.Internal.Build
     local Test = FurCDev.Test
     local DS = Test.dataset()
 
@@ -96,7 +97,7 @@ Taneth("FurC:Lib", function()
     it("raw names the enums instead of numbering them", function()
       local lines = run("raw " .. DS.luxItemInDB)
       assert.is_true(#lines >= 4)
-      assert.is_not_nil(lines[2]:find("origin=%u%u"))
+      assert.is_not_nil(lines[2]:find("primary=%u%u"))
       -- a version value is a sequence position, so it is named, never numbered
       assert.is_not_nil(lines[2]:find("version=%u%u"))
       assert.is_not_nil(lines[3]:find("sources=%u%u"))
@@ -119,7 +120,8 @@ Taneth("FurC:Lib", function()
       local placed
       for _, id in ipairs(LibFurnitureCatalogue.API.GetItemIds()) do
         for _, record in ipairs(LibFurnitureCatalogue.API.GetSourceDetails(id)) do
-          if record.source.place and not record.source.location then
+          local only = (record.source.locations or {})[1]
+          if only and only.place and not only.location then
             placed = id
             break
           end
@@ -174,10 +176,10 @@ Taneth("FurC:Lib", function()
       local craftOnly
       local CRAFTING = LFC.Internal.Constants.ItemSources.CRAFTING
       for id, arr in pairs(FurC.DB) do
-        if type(arr) == "table" and arr.sources and arr.sources[CRAFTING] then
+        if type(arr) == "table" and build.HasSource(arr.sources, CRAFTING) then
           local others = 0
-          for source in pairs(arr.sources) do
-            if source ~= CRAFTING and not LFC.Internal.Compat.IsInjected(arr.compatSources, source) then
+          for source in build.EachSource(arr.sources) do
+            if source ~= CRAFTING then
               others = others + 1
             end
           end
@@ -194,6 +196,40 @@ Taneth("FurC:Lib", function()
       end
     end)
 
+    -- LFC has to return data for every registered item
+    it("answers for every item in the database, and goes empty for none that publishes a record", function()
+      FurC.EnsureDB(true)
+      local query = LFC.Internal.Query
+      local CRAFTING = LFC.Internal.Constants.ItemSources.CRAFTING
+      local silent, answered = {}, 0
+
+      for _, itemId in ipairs(LFC.API.GetItemIds()) do
+        local entry = LFC.API.GetEntry(itemId)
+        local ranked = query.GetRankedSources(itemId, entry, false)
+        local records = 0
+        for _, record in ipairs(LFC.API.GetSourceDetails(itemId)) do
+          if record.source.type ~= CRAFTING then
+            records = records + 1
+          end
+        end
+        if records > 0 and #ranked == 0 and #silent < 10 then
+          silent[#silent + 1] =
+            string.format("%d publishes %d records and the chat command lists none", itemId, records)
+        end
+        for _, line in ipairs(ranked) do
+          assert.equals("string", type(line.text), string.format("%d/%d", itemId, line.source))
+          assert.is_true(#line.text > 0, string.format("%d/%d renders empty", itemId, line.source))
+        end
+        -- the deprecated endpoint answers for the item's own origin
+        local described = query.GetItemDescription(itemId, entry, false)
+        assert.equals("string", type(described), string.format("%d describes as %s", itemId, type(described)))
+        answered = answered + 1
+      end
+
+      assert.is_true(answered > 8000)
+      assert.same({}, silent)
+    end)
+
     it("shows the recipe next to a craftable furnishing", function()
       local entry = DS.craftable and LFC.API.GetEntry(DS.craftable)
       if not entry or not entry.blueprint then
@@ -206,7 +242,7 @@ Taneth("FurC:Lib", function()
     it("reports no mats for an item that is not craftable", function()
       local plain
       for id, arr in pairs(FurC.DB) do
-        if type(arr) == "table" and not (arr.blueprint or (arr.recipeListIndex and arr.recipeIndex)) then
+        if type(arr) == "table" and not (arr.blueprint or LFC.Internal.Query.GrantedRecipeIndices(arr)) then
           plain = id
           break
         end
@@ -251,6 +287,13 @@ Taneth("FurC:Lib", function()
       local lines = run("")
       assert.is_true(#lines >= 4)
       assert.is_not_nil(lines[1]:find(GetString(SI_FURC_CHAT_USAGE), 1, true))
+    end)
+
+    -- the strip patterns are anchored on an opening and closing tag but we don't want to delete everything between those if we have, for instance, 2 blocks
+    it("keeps the text between two segments of the same markup", function()
+      assert.equals("100 gold and 50 silver", chat.Line("100|u0:1:x:|u gold and 50|u0:1:y:|u silver"))
+      assert.equals("one two", chat.Line("one|u0:1:a:|u two"))
+      assert.equals("nothing to strip", chat.Line("nothing to strip"))
     end)
 
     it("strips line breaks out of a source string that has them", function()

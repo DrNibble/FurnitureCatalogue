@@ -75,9 +75,6 @@ FurC_DropdownVersion = Control
 FurC_DropdownCharacter = Control
 FurC_TypeFilter = Control
 FurC_Search = Control
-FurC_ShowRumours = ButtonControl
-FurC_ShowCrowns = ButtonControl
-FurC_ShowRumoursGlow = TextureControl
 FurC_CategoryFilter = Control
 FurCGui_Header_SortBar_Name = LabelControl
 FurCGui_Header_SortBar_Description = LabelControl
@@ -116,6 +113,7 @@ FurCDevControl_Content_Right_fromTrader = ButtonControl
 FurCDevControl_Content_Right_selectAll = ButtonControl
 FurCDevControl_Content_Right_BoxBg = BackdropControl
 FurCDevControl_Achievements = Control
+FurCDevControl_Quests = Control
 FurCDevControl_Zones = Control
 FurCDevControl_Houses = Control
 ---------- LVL: 09 ----------
@@ -124,6 +122,9 @@ FurCDevControlBox = EditControl
 FurCDevControl_Achievements_SearchBg = BackdropControl
 FurCDevControl_AchievementsPager = Control
 FurCDevControl_AchievementsList = Control
+FurCDevControl_Quests_SearchBg = BackdropControl
+FurCDevControl_QuestsPager = Control
+FurCDevControl_QuestsList = Control
 FurCDevControl_Zones_SearchBg = BackdropControl
 FurCDevControl_ZonesPager = Control
 FurCDevControl_ZonesList = Control
@@ -133,6 +134,7 @@ FurCDevControl_HousesList = Control
 ---------- LVL: 11 ----------
 ---------- LVL: 12 ----------
 FurCDevControl_AchievementsSearch = EditControl
+FurCDevControl_QuestsSearch = EditControl
 FurCDevControl_ZonesSearch = EditControl
 FurCDevControl_HousesSearch = EditControl
 ---------- LVL: 13 ----------
@@ -140,73 +142,54 @@ FurCDevControl_HousesSearch = EditControl
 
 -- ////// START : GENERATED FROM locale/en.lua
 SI_FURC_ADD_FAVE = " Add Favorite"
-SI_FURC_CONTAINS_BOOKS = "Contains <<1>> books:"
+SI_FURC_CONTAINS_BOOKS = "Contains <<1>> books"
 SI_FURC_DIALOGUE_RESET_DB_BODY = "This will re-create the FurnitureCatalogue database from scratch"
 SI_FURC_DIALOGUE_RESET_DB_HEADER = "Really re-create furniture database?"
 SI_FURC_FILTER_CHAR_OFF = "Character filter: off"
-SI_FURC_FILTER_CHAR_OFF_TT = "disables this filter"
-SI_FURC_FILTER_CROWN_HIDE_TT = "Showing crown store. Click to hide."
-SI_FURC_FILTER_RUMOUR_HIDE_TT = "Showing rumour (unconfirmed) items. Click to hide."
+SI_FURC_FILTER_CHAR_OFF_TT = "Disables this filter"
 SI_FURC_FILTER_SRC_ACHIEVEMENT = "Achievement"
-SI_FURC_FILTER_SRC_ACHIEVEMENT_TT = "Items purchased from an Achievement Furnisher"
 SI_FURC_FILTER_SRC_ANTIQUITY = "Antiquity"
-SI_FURC_FILTER_SRC_ANTIQUITY_TT = "Shows furnishings recovered via Scrying/Excavation"
 SI_FURC_FILTER_SRC_CHEST = "Treasure Chests"
-SI_FURC_FILTER_SRC_CHEST_TT = "Shows furnishings found in treasure chests"
 SI_FURC_FILTER_SRC_CONTAINER = "Containers"
-SI_FURC_FILTER_SRC_CONTAINER_TT = "Shows furnishings stolen from containers"
 SI_FURC_FILTER_SRC_CRAFTING = "Craftable: All"
 SI_FURC_FILTER_SRC_CRAFTING_KNOWN = "Known"
-SI_FURC_FILTER_SRC_CRAFTING_KNOWN_TT = "Shows only known craftable items"
 SI_FURC_FILTER_SRC_CRAFTING_TT = "Shows all craftable items"
 SI_FURC_FILTER_SRC_CRAFTING_UNKNOWN = "Unknown"
-SI_FURC_FILTER_SRC_CRAFTING_UNKNOWN_TT = "Shows only unknown craftable items"
 SI_FURC_FILTER_SRC_CROWN = "Crown Store"
 SI_FURC_FILTER_SRC_CROWNS = "Crown"
-SI_FURC_FILTER_SRC_CROWNS_TT = "Everything bought with crowns"
-SI_FURC_FILTER_SRC_CROWN_TT = "Shows items that can only be acquired from crown store"
 SI_FURC_FILTER_SRC_CURRENCY = "Currency"
 SI_FURC_FILTER_SRC_CURRENCY_TT = "Items sorted by currency types"
 SI_FURC_FILTER_SRC_DROP = "Drop"
 SI_FURC_FILTER_SRC_DROP_TT = "Shows furnishings dropped by enemies or found in the world"
 SI_FURC_FILTER_SRC_DUNGEON = "Dungeon"
-SI_FURC_FILTER_SRC_DUNGEON_TT = "Shows furnishings dropped in group dungeons"
 SI_FURC_FILTER_SRC_EDITOR = "Housing Editor"
-SI_FURC_FILTER_SRC_EDITOR_TT = "Shows items that can be bought in the housing editor"
 SI_FURC_FILTER_SRC_EVENT = "Event"
 SI_FURC_FILTER_SRC_EVENT_TT = "Shows furnishings obtained during in-game events"
 SI_FURC_FILTER_SRC_FAVE = "Favorites"
 SI_FURC_FILTER_SRC_FAVE_TT = "Shows your favorites"
 SI_FURC_FILTER_SRC_FISHING = "Fishing"
-SI_FURC_FILTER_SRC_FISHING_TT = "Shows furnishings caught while fishing"
+SI_FURC_FILTER_SRC_GOLD_COAST_BAZAAR = "Gold Coast Bazaar"
 SI_FURC_FILTER_SRC_HARVEST = "Harvesting"
-SI_FURC_FILTER_SRC_HARVEST_TT = "Shows furnishings obtained by harvesting resource nodes"
 SI_FURC_FILTER_SRC_HOME_GOODS = "Home Goods"
-SI_FURC_FILTER_SRC_HOME_GOODS_TT = "Items purchased from a Home Goods Furnisher"
+SI_FURC_FILTER_SRC_IMPRESARIO = "Impresario"
 SI_FURC_FILTER_SRC_JUSTICE = "Justice"
 SI_FURC_FILTER_SRC_JUSTICE_TT = "Shows furnishings obtained by pickpocketing or stealing"
 SI_FURC_FILTER_SRC_LUX = "Luxury items"
 SI_FURC_FILTER_SRC_LUX_TT = "Items that at some point were sold by Zanil Theran in Coldharbour and Craglorn"
 SI_FURC_FILTER_SRC_NONE = "Source filter: off"
-SI_FURC_FILTER_SRC_NONE_TT = "Disables this filter"
+SI_FURC_FILTER_SRC_NONE_TT =
+  "Disables this filter. Use this one if you don't want the active filter included when multi-selecting."
 SI_FURC_FILTER_SRC_OTHER = "Other"
 SI_FURC_FILTER_SRC_OTHER_TT = "Shows items from a variety of other sources"
 SI_FURC_FILTER_SRC_PICKPOCKET = "Pickpocketing"
-SI_FURC_FILTER_SRC_PICKPOCKET_TT = "Shows furnishings obtained by pickpocketing NPCs"
 SI_FURC_FILTER_SRC_PVP = "PVP"
-SI_FURC_FILTER_SRC_PVP_TT = "Everything bought with PvP currency"
 SI_FURC_FILTER_SRC_QUEST = "Quest Reward"
-SI_FURC_FILTER_SRC_QUEST_TT = "Shows furnishings received as quest rewards"
 SI_FURC_FILTER_SRC_RUMOUR = "Rumour items"
 SI_FURC_FILTER_SRC_RUMOUR_TT = "Items and recipes that have been datamined, but haven't been confirmed existing"
 SI_FURC_FILTER_SRC_SOLD_AP = "Alliance Points"
-SI_FURC_FILTER_SRC_SOLD_AP_TT = "Items that are sold for alliance points"
 SI_FURC_FILTER_SRC_SOLD_GOLD = "Gold"
-SI_FURC_FILTER_SRC_SOLD_GOLD_TT = "Everything bought with gold"
 SI_FURC_FILTER_SRC_SOLD_TBARS = "Trade Bars"
-SI_FURC_FILTER_SRC_SOLD_TBARS_TT = "Everything bought with trade bars"
 SI_FURC_FILTER_SRC_SOLD_TELVAR = "Tel Var"
-SI_FURC_FILTER_SRC_SOLD_TELVAR_TT = "Items that are sold for tel var stones"
 SI_FURC_FILTER_SRC_SOLD_TOMEPOINTS = "Tome Points"
 SI_FURC_FILTER_SRC_SOLD_TOMEPOINTS_TT = "Obtainable only from Tamriel Tomes during a specific season"
 SI_FURC_FILTER_SRC_SOLD_WRIT = "Master Writ Vendor"
@@ -235,6 +218,8 @@ SI_FURC_FILTER_VERSION_DRAGON2_TT = "Now with more dragons"
 SI_FURC_FILTER_VERSION_DRAGON_TT = "If you got this from Narsis Dren, well..."
 SI_FURC_FILTER_VERSION_DRUID = "Firesong"
 SI_FURC_FILTER_VERSION_DRUID_TT = "Remember when we could block?"
+SI_FURC_FILTER_VERSION_ECHOES = "Season Two"
+SI_FURC_FILTER_VERSION_ECHOES_TT = "Rumor had it you're finally awake"
 SI_FURC_FILTER_VERSION_ENDLESS = "Secrets of the Telvanni"
 SI_FURC_FILTER_VERSION_ENDLESS_TT = "This archive is, for legal or other reasons, not endless"
 SI_FURC_FILTER_VERSION_FALLBAN = "Fallen Banners"
@@ -299,8 +284,6 @@ SI_FURC_POST_MATERIAL = " Post material"
 SI_FURC_POST_RECIPE = " Post recipe"
 SI_FURC_REMOVE_FAVE = " Remove Favorite"
 SI_FURC_SEEN_IN_GUILDSTORE = "Seen in Guild Store"
-SI_FURC_SHOW_CROWN_TT = "Hiding crown store. Click to show."
-SI_FURC_SHOW_RUMOUR_TT = "Confirmed items only. Click to show rumour items."
 SI_FURC_STRING_CANNOT_CRAFT = "You cannot craft this yet"
 SI_FURC_STRING_CHARACTER_NEEDS_LCK = "Install LibCharacterKnowledge to filter by character"
 SI_FURC_STRING_CHARACTER_USES_LCK =
@@ -314,10 +297,6 @@ SI_FURC_STRING_CONTEXTMENU_INVENTORY_TT =
 SI_FURC_STRING_CRAFTABLE_BY = "Can be crafted by "
 SI_FURC_STRING_MENU_ADD_ITEMS_NAME = "Add items to known/unknown recipes?"
 SI_FURC_STRING_MENU_ADD_ITEMS_TT = "You shouldn't notice any lag"
-SI_FURC_STRING_MENU_CROWN = "Crown store items"
-SI_FURC_STRING_MENU_CROWN_DESC =
-  "The furniture database will update whenever the tooltip shows a furniture item. \nSome items can only be acquired via crown store. \nCheck this box to exclude them from the default filters (you can still see them by selecting 'Crown Store' from source dropdown)."
-SI_FURC_STRING_MENU_CROWN_N = "Hide crown store items?"
 SI_FURC_STRING_MENU_DEBUG = "Enable debug output"
 SI_FURC_STRING_MENU_DEBUG_TT = "Only has an effect if a debug logger is enabled"
 SI_FURC_STRING_MENU_DEFAULT_DD = "Default dropdown values"
@@ -328,15 +307,12 @@ SI_FURC_STRING_MENU_DEFAULT_DD_RESET_TT =
 SI_FURC_STRING_MENU_DEFAULT_DD_SOURCE = "Default source filter"
 SI_FURC_STRING_MENU_DEFAULT_DD_USE = "Will be set on initial launch"
 SI_FURC_STRING_MENU_DEFAULT_DD_USE_TT = "These will not reset if you open and close the UI"
-SI_FURC_STRING_MENU_DEFAULT_DD_VERSION = "default version filter"
+SI_FURC_STRING_MENU_DEFAULT_DD_VERSION = "Default version filter"
 SI_FURC_STRING_MENU_ENABLE_SHOPPINGLIST = "Enable integration?"
 SI_FURC_STRING_MENU_FALL_HIDE_BOOKS = "Hide books anyway"
 SI_FURC_STRING_MENU_FALL_HIDE_BOOKS_TT = "Even when filtering all items, still hide books?"
-SI_FURC_STRING_MENU_FALL_HIDE_CROWN = "Hide crown store items anyway"
-SI_FURC_STRING_MENU_FALL_HIDE_CROWN_TT = "Even when filtering all items, still hide crown store items?"
 SI_FURC_STRING_MENU_FALL_HIDE_RUMOUR = "Hide rumour items anyway"
 SI_FURC_STRING_MENU_FALL_HIDE_RUMOUR_TT = "Even when filtering all items, still hide rumour items?"
-SI_FURC_STRING_MENU_FALL_HIDE_UI_BUTTON = "Hide UI button in search box?"
 SI_FURC_STRING_MENU_FILTERING = "Catalogue filtering"
 SI_FURC_STRING_MENU_FILTER_ALL_ON_TEXT = "Search filtered items when doing a text search with no dropdown filters set?"
 SI_FURC_STRING_MENU_FILTER_ALL_ON_TEXT_TT = "When doing a text search without any dropdown "
@@ -354,27 +330,17 @@ SI_FURC_STRING_MENU_HEADER_ICONS = "Inventory and bank icons"
 SI_FURC_STRING_MENU_IT_THIS_ONLY = "Only for this character?"
 SI_FURC_STRING_MENU_IT_THIS_ONLY_TT = "Will be accountwide otherwise."
 SI_FURC_STRING_MENU_IT_UNKNOWN_NAME = "Only mark unknown recipes?"
-SI_FURC_STRING_MENU_LUXURY = "Luxury Furnishings"
-SI_FURC_STRING_MENU_LUXURY_N = "Treat luxury items as purchasables?"
-SI_FURC_STRING_MENU_LUXURY_TT =
-  "This will show everything that was sold by Zanil Theran under 'purchasable' and deactvates the custom filter"
-SI_FURC_STRING_MENU_LUXURY_WARN =
-  "Hiding the dropdown entry requires UI reload (won't happen automatically for your convenience)"
 SI_FURC_STRING_MENU_REFRESH_CHARS = "Refresh characters"
 SI_FURC_STRING_MENU_REFRESH_CHARS_TT = "Reload the character list from LibCharacterKnowledge"
 SI_FURC_STRING_MENU_RESET_DB_NAME = "|cFF0000Reset database"
 SI_FURC_STRING_MENU_RESET_DB_TT = "This will reset the furniture database."
 SI_FURC_STRING_MENU_RESET_DB_WARNING =
   "All your data will be reset. Only recipe knowledge for this character will be considered."
-SI_FURC_STRING_MENU_RUMOUR = "Rumour recipes"
-SI_FURC_STRING_MENU_RUMOUR_DESC =
-  "The furniture database contains a list of recipes that I have datamined.\nHowever, not all of those have been seen in-game.\nEnable this option to exclude them from the default filters.\nYou can still view them with their own filter, which you can disable below."
-SI_FURC_STRING_MENU_RUMOUR_N = "Hide rumour recipes?"
 SI_FURC_STRING_MENU_SCAN_FILES_NAME = "Scan files"
 SI_FURC_STRING_MENU_SCAN_FILES_TT = "Will run a full scan of the data in Furniture Catalogue's files"
 SI_FURC_STRING_MENU_SHOWICONONLEFT = "Show Known/Unknown icon on left?"
 SI_FURC_STRING_MENU_SHOWICONONLEFT_TT =
-  "Show Green Check/Red X icon on left or right of the inventory item (requires reloadui)"
+  "Show Green Check/Red X icon on left of the inventory item (it will move to the right when off)"
 SI_FURC_STRING_MENU_SKIP_INITIALSCAN = "Skip Initial Scan?"
 SI_FURC_STRING_MENU_SKIP_INITIALSCAN_TT =
   "Check this to not scan your character's recipes on login. \nThanks to votan's awesome LibAsync the lag is gone now in any case.."
@@ -393,9 +359,18 @@ SI_FURC_STRING_MENU_TOOLTIP_HIDE_UNKNOWN_TT = "Hides 'you cannot craft this yet'
 SI_FURC_STRING_MENU_USETINY = "Use tiny interface?"
 SI_FURC_STRING_MENU_USETINY_TT =
   "Use a smaller interface (Craft Store like). \nYou can toggle this from the UI by clicking the +/- button."
-SI_FURC_STRING_RECIPESFORCHAR = "recipes for <<1>>"
+SI_FURC_STRING_RECIPESFORCHAR = "Recipes for <<1>>"
 SI_FURC_TEXTBOX_FILTER_DEFAULT = "Filter by text search"
 SI_FURC_TOGGLE_SHOPPINGLIST = " Toggle shopping list"
+SI_FURC_TOOLTIP_DONATE =
+  "Click to say thank you:\nLeft: 2k\nRight: 10k\nMiddle: 25k\nYour feedback and/or donation is appreciated!"
+SI_FURC_TOOLTIP_FILTER_SOURCE = "Filter: Knowledge and source. Right-click filters to multi-select."
+SI_FURC_TOOLTIP_FILTER_VERSION = "Filter: game version"
+SI_FURC_TOOLTIP_HIDE_WINDOW = "Hide window"
+SI_FURC_TOOLTIP_RECIPE_COUNT = "Number of recipes below"
+SI_FURC_TOOLTIP_RESCAN = "Click: Re-scan data files\n\nRight-/Middle-click: Re-create database\n(will ask you first)"
+SI_FURC_TOOLTIP_SETTINGS = "Open settings"
+SI_FURC_TOOLTIP_TEMPLATE_TOGGLE = "Change template"
 -- ////// END   : GENERATED FROM locale/en.lua
 
 -- ////// START   : Manual entries and overrides
@@ -605,7 +580,7 @@ end
 ---| 6 # CURT_CROWN_GEMS (Crown Gems)
 ---| 7 # CURT_CROWNS (Crowns)
 ---| 8 # CURT_STYLE_STONES (Style Mimic Stones)
----| 9 # CURT_EVENT_TICKETS (Event Tickets)
+---| 9 # CURT_TRADE_BARS (Trade Bars)
 ---| 10 # CURT_UNDAUNTED_KEYS (Undaunted Keys)
 ---| 11 # CURT_ENDEAVOR_SEALS (Seals of Endeavor)
 ---| 12 # CURT_ARCHIVAL_FORTUNES (Infinite Archive)
@@ -629,7 +604,7 @@ CURT_CROWNS = 7
 ---@type CurrencyType
 CURT_STYLE_STONES = 8
 ---@type CurrencyType
-CURT_EVENT_TICKETS = 9
+CURT_TRADE_BARS = 9
 ---@type CurrencyType
 CURT_UNDAUNTED_KEYS = 10
 ---@type CurrencyType
@@ -797,6 +772,76 @@ SI_MONSTERSOCIALCLASS47 = 1066
 
 -- LIBS
 
+----------------------------
+-- LibFurnitureCatalogue
+----------------------------
+
+---@alias FurCItemSource integer # FurC.Constants.ItemSources values
+
+---@alias LFCDBState "uninitialized"|"building"|"ready"|"failed"
+
+---Single furniture entry, returned by GetEntry and Query.Find
+---
+--- The category fields are not added, use GetFurnitureCategories, or game functions
+---@class FurCEntry
+---@field id integer the itemId this entry is stored under
+---@field sources table<FurCItemSource, boolean> every source this item has, plus the ones a fine-grained source was carved from
+---@field origin FurCItemSource NOT PROMISED, top-ranked source, derived from `sources`
+---@field version integer game version when the item was added
+---@field blueprint integer|nil blueprint itemId, when craftable
+---@field furnCategory integer NOT PROMISED, derived. Furniture category id (0 = no category). Absent from a copy
+---@field furnSubcategory integer NOT PROMISED, derived. Furniture subcategory id. Absent from a copy
+---@field compatSources integer|nil NOT PROMISED, deprecated. Bitmask of the `sources` members that exist only for deprecated calls, absent when nothing was injected. Use Internal.Compat.IsInjected to check
+FurCEntry = nil
+
+---Where one source of an item comes from
+---
+---A field that can name several things of one kind is a list (`houses`, `packs`, `locations`), everything else is one id
+---@class LFCSourceOrigin
+---@field type integer source type, see GetSourceTypes
+---@field vendor integer|nil locale string id, resolve with GetString
+---@field location integer|nil game zone id, resolve with GetZoneNameById
+---@field locations integer[]|nil game zone ids, when one source covers several zones. Set instead of `location`
+---@field place integer|nil locale string id for somewhere the game has no zone for, resolve with GetString. With `location` it is a place inside that zone, on its own it's all the record knows
+---@field note (integer|string|table)|nil adds details to a source. Locale string id, a bare literal, structured table, or a list of alternatives
+---@field category integer|nil locale string id naming what kind of source this is, when the row names its own rather than taking the source type's word
+---@field achievement integer|nil achievement id. `0` when it requires an achievement but the id is unknown
+---@field quest integer|nil quest id, resolve with GetQuestName
+---@field skillLine integer|nil skill line id, resolve with GetSkillLineNameById. On a vendor record it tells which guild sells it and asking what the Thieves Guild sells is asking for Legerdemain skills
+---@field skillRank integer|nil required rank in that skill line. nil means no rank required
+---@field event integer|nil locale string id, resolve with GetString
+---@field crate integer|nil crown crate id, resolve with GetCrownCrateName. `0` when it's a crate but the id is unknown and we have no name
+---@field packs integer[]|nil item ids of the furnishing packs it is part of
+---@field bundle integer|nil locale string id of a Crown Store bundle that does not have an item id, resolve with GetString
+---@field itemPack integer|nil locale string id of a Tamriel Tomes item pack, resolve with GetString
+---@field houses integer[]|nil collectible ids of the houses it comes furnished with, resolve with GetCollectibleName
+---@field collectible integer|nil collectible id the furnishing comes with (resolve with `GetCollectibleName`)
+---@field partOf integer|nil item id of the container, folio or collection the item is bought as part of
+---@field container integer|nil item id of the container it is found in
+---@field containerKind (integer|integer[])|nil locale string id(s) naming a kind of container, resolve with GetString
+---@field npcClass (integer|integer[])|nil monster social class string id(s), the game's own, resolve with GetString
+---@field leads true|nil the antiquity is assembled from several leads; the player's codex has the count
+---@field rarity integer|nil locale string id naming how rare the source is, resolve with GetString
+LFCSourceOrigin = nil
+
+---What one source costs. A source taking two currencies is modelled as two sources, not two costs
+---@class LFCSourceCost
+---@field currency integer ESO currency constant
+---@field amount integer
+LFCSourceCost = nil
+
+---When one source was current (`lastSeen` is set on luxury furnisher records only)
+---@class LFCSourceAvailability
+---@field version integer game version, see GetDataVersions
+---@field lastSeen string|nil YYYY-MM-DD
+LFCSourceAvailability = nil
+
+---One source of one item: where it comes from, what it costs, when it was current
+---@class LFCSourceRecord
+---@field source LFCSourceOrigin
+---@field cost LFCSourceCost|nil nil when the source has no price
+---@field availability LFCSourceAvailability
+LFCSourceRecord = nil
 ---@class LibDebugLogger
 ---@field Create fun(tag: string): Logger
 ---@field ClearLog fun(self: LibDebugLogger): self
@@ -951,7 +996,6 @@ SI_FURC_SRC_QUEST = "quest^n,from"
 SI_FURC_SRC_QUEST_DAILY = "daily quests^p,from"
 SI_FURC_SRC_RNDMOB = "random mobs^p,from"
 SI_FURC_SRC_RUMOUR_ITEM = "This item has been datamined, but not seen in-game"
-SI_FURC_SRC_RUMOUR_RECIPE = "This recipe has been datamined, but not seen in-game"
 SI_FURC_SRC_SAFEBOX = "safeboxes^P,from"
 SI_FURC_SRC_SCAMBOX = "Crown Crate^n,from"
 SI_FURC_SRC_SCRYING = "scrying^N,from"

@@ -42,6 +42,15 @@ Taneth("FurC:Lib", function()
       return src:gsub("%-%-[^\n]*", "")
     end
 
+    -- blank out string literals, so a FurC.* name inside a message is not read as a touch.
+    -- After stripComments, so an apostrophe in prose is already gone
+    local function stripStrings(src)
+      local blank = function(s)
+        return string.rep(" ", #s)
+      end
+      return (src:gsub('"[^"\n]*"', blank):gsub("'[^'\n]*'", blank))
+    end
+
     -- legacy FurC.*: symbols the lib may touch. Everything else on FurC belongs to the main addon and is bad touch.
     --  TODO: Shrink list as we migrate
     local LIB_OWNED = {
@@ -75,6 +84,7 @@ Taneth("FurC:Lib", function()
       Justice = true,
       Fishing = true,
       AchievementVendors = true,
+      HomeGoodsFurnisher = true,
       LuxuryFurnisher = true,
       PVP = true,
       Rumours = true,
@@ -103,7 +113,7 @@ Taneth("FurC:Lib", function()
         if src then
           checked = checked + 1
           local n = 0
-          for line in (stripComments(src) .. "\n"):gmatch("([^\n]*)\n") do
+          for line in (stripStrings(stripComments(src)) .. "\n"):gmatch("([^\n]*)\n") do
             n = n + 1
             for suffix in line:gmatch("%f[%w]FurC(%.?[%w_]*)") do
               local name = suffix:match("^%.([%w_]+)$")
@@ -152,10 +162,10 @@ Taneth("FurC:Lib", function()
     end)
 
     local INTERNAL_REACH_BASELINE = {
-      ["Chat.lua"] = true,
       ["Filter.lua"] = true,
+      -- takes the library's note resolver rather than keeping a second copy of the same switch
+      ["Format.lua"] = true,
       ["SearchIndex.lua"] = true,
-      ["Startup.lua"] = true,
       ["Tooltip.lua"] = true,
     }
 
@@ -197,7 +207,6 @@ Taneth("FurC:Lib", function()
       ["Internal.lua"] = true,
       ["Knowledge.lua"] = true,
       ["SearchIndex.lua"] = true,
-      ["Tooltip.lua"] = true,
     }
 
     -- we don't want to fall back to the old patterns again
@@ -248,6 +257,29 @@ Taneth("FurC:Lib", function()
       assert.is_true(checked > 5)
       assert.same({}, newcomers)
       assert.same({}, miscounted)
+    end)
+
+    -- The flat alias hands back the library's live row and an empty table on a miss, whereas the API lookup copies and answers nil (this is just a compatibility check for 3rd party AddOns, not for FC)
+    it("no main source looks an item up through the flat alias", function()
+      if not (io and FurCDev.repoRoot) then
+        return -- run test headless only
+      end
+      local callers, checked = {}, 0
+      for _, rel in ipairs(manifestFiles("FurnitureCatalogue.txt", "")) do
+        local src = readFile(rel)
+        if src then
+          checked = checked + 1
+          local n = 0
+          for line in (stripComments(src) .. "\n"):gmatch("([^\n]*)\n") do
+            n = n + 1
+            if line:find("%f[%w]FurC%.Find%f[%W]") or line:find("%f[%w]DBQuery%.Find%f[%W]") then
+              callers[#callers + 1] = rel .. ":" .. n .. ": " .. line:gsub("^%s+", "")
+            end
+          end
+        end
+      end
+      assert.is_true(checked > 5)
+      assert.same({}, callers)
     end)
   end)
 end)

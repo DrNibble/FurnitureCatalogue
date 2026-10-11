@@ -4,6 +4,9 @@ if not Taneth then
   return
 end
 
+-- Taneth runs every test body in a sandbox where `_G` is the sandbox itself, so the real global  table has to be taken out here for a stub to reach the library
+local GLOBALS = _G
+
 Taneth("FurC:Lib", function()
   local api = LibFurnitureCatalogue.API
   local Test = FurCDev.Test
@@ -29,6 +32,7 @@ Taneth("FurC:Lib", function()
       assert.same(
         Test.nameSet({
           "Events",
+          "GetContainer",
           "GetDBRevision",
           "GetDataVersionKeys",
           "GetDataVersions",
@@ -51,7 +55,6 @@ Taneth("FurC:Lib", function()
           "IsReady",
           "OnReady",
           "RegisterCallback",
-          "SourceType",
           "State",
           "UnregisterCallback",
         }),
@@ -111,12 +114,20 @@ Taneth("FurC:Lib", function()
         queuedSelf, queuedRevision = observedSelf, revision
       end
 
+      -- false is a deliberate value and not the same as  "no arg"
+      local falseArgCalls, falseArgSeen, falseArgRevision = 0, "unset", nil
+      local function onFalseArgReady(observedArg, revision)
+        falseArgCalls = falseArgCalls + 1
+        falseArgSeen, falseArgRevision = observedArg, revision
+      end
+
       local function onScanStarted()
         stateDuringBuild = api.GetState()
         readyCallsDuringBuild = readyCalls
         accepted = api.OnReady(onReady)
         duplicateAccepted = api.OnReady(onReady)
         api.OnReady(onQueuedReady, queuedArg)
+        api.OnReady(onFalseArgReady, false)
       end
 
       local badCalls = 0
@@ -174,6 +185,9 @@ Taneth("FurC:Lib", function()
       assert.equals(api.GetDBRevision(), completeRevision)
       assert.equals(queuedArg, queuedSelf)
       assert.equals(api.GetDBRevision(), queuedRevision)
+      assert.equals(1, falseArgCalls)
+      assert.is_false(falseArgSeen)
+      assert.equals(api.GetDBRevision(), falseArgRevision)
       assert.is_true(api.GetDBRevision() > beforeRevision)
       assert.same({ "ready", "bad", "complete", "reentrant" }, sequence)
       assert.is_true(removedBad)
@@ -184,8 +198,9 @@ Taneth("FurC:Lib", function()
     end)
 
     it("reports build failures and recovers only on explicit rebuild", function()
-      local compat = LibFurnitureCatalogue.Internal.Compat
-      local originalCloseOver = compat.CloseOverAncestors
+      local target = LibFurnitureCatalogue.Internal.Generated or GLOBALS
+      local stubbed = LibFurnitureCatalogue.Internal.Generated and "Install" or "IsItemLinkFurnitureRecipe"
+      local original = target[stubbed]
       local sentinel = "expected lifecycle build failure"
       local completeCalls = 0
       local readyCalls = 0
@@ -204,11 +219,11 @@ Taneth("FurC:Lib", function()
 
       api.RegisterCallback(api.Events.SCAN_COMPLETE, onComplete)
       api.RegisterCallback(api.Events.SCAN_FAILED, onFailed)
-      compat.CloseOverAncestors = function()
+      target[stubbed] = function()
         error(sentinel)
       end
       local failedOk, failedErr = pcall(FurC.RebuildDB, true)
-      compat.CloseOverAncestors = originalCloseOver
+      target[stubbed] = original
       api.UnregisterCallback(api.Events.SCAN_FAILED, onFailed)
 
       local failedState, buildError = api.GetState()
@@ -248,6 +263,25 @@ Taneth("FurC:Lib", function()
       assert.equals(1, completeCalls)
     end)
 
+    it("container contents are sorted snapshots with matching parent records", function()
+      local collection = api.GetContainer(145596)
+      assert.equals("books", collection.kind)
+      assert.is_true(#collection.contents > 0)
+      for i, id in ipairs(collection.contents) do
+        if i > 1 then
+          assert.is_true(collection.contents[i - 1] < id)
+        end
+        local parentFound = false
+        for _, record in ipairs(api.GetSourceDetails(id)) do
+          parentFound = parentFound or record.source.partOf == 145596
+        end
+        assert.is_true(parentFound)
+      end
+      collection.contents[1] = -1
+      assert.is_true(api.GetContainer(145596).contents[1] > 0)
+      assert.is_nil(api.GetContainer(99123456))
+    end)
+
     it("GetEntry returns a snapshot, nil on miss", function()
       FurC.EnsureDB(true)
       assert.is_nil(api.GetEntry(UNKNOWN_ID))
@@ -273,8 +307,8 @@ Taneth("FurC:Lib", function()
       assert.is_true(#records > 0)
       for _, rec in ipairs(records) do
         assert.equals("number", type(rec.source.type))
-        assert.equals("table", type(rec.availability))
-        assert.equals("number", type(rec.availability.version))
+        -- the update an item arrived in belongs to the entry, not to each of its records
+        assert.is_nil(rec.availability)
       end
 
       local lux
@@ -289,10 +323,17 @@ Taneth("FurC:Lib", function()
       -- client language. Asserted against the constants rather than by type, because
       -- a locale string id is a number in the client and a string under the stubs
       assert.equals(FurC.Constants.NpcIds.LUXF, lux.source.vendor)
-      assert.equals(FurC.Constants.ZoneIds.COLDH, lux.source.location)
-      assert.equals("number", type(lux.source.location))
+      -- the luxury furnisher stands in two zones, so the record states the plural
+      assert.is_nil(lux.source.location)
+      assert.same({
+        { location = FurC.Constants.ZoneIds.COLDH },
+        { location = FurC.Constants.ZoneIds.CRAGLORN },
+      }, lux.source.locations)
+      for _, placement in ipairs(lux.source.locations) do
+        assert.equals("number", type(placement.location))
+        assert.is_true(#GetZoneNameById(placement.location) > 0)
+      end
       assert.is_true(#GetString(lux.source.vendor) > 0)
-      assert.is_true(#GetZoneNameById(lux.source.location) > 0)
       assert.equals("number", type(lux.cost.amount))
       assert.equals(CURT_MONEY, lux.cost.currency)
 
@@ -303,31 +344,78 @@ Taneth("FurC:Lib", function()
       FurC.EnsureDB(true)
       local srcEnum = FurC.Constants.ItemSources
 
-      local function recordFor(itemId, sourceType)
+      local function recordsFor(itemId, sourceType)
+        local found = {}
         for _, rec in ipairs(api.GetSourceDetails(itemId)) do
           if rec.source.type == sourceType then
+            found[#found + 1] = rec
+          end
+        end
+        return found
+      end
+
+      local function recordWith(itemId, sourceType, field)
+        for _, rec in ipairs(recordsFor(itemId, sourceType)) do
+          if rec.source[field] ~= nil then
             return rec
           end
         end
       end
 
       -- a crate row: the season, and no price of its own
-      local crate = recordFor(224739, srcEnum.CROWN) -- Aetherean Rupture, Liminal
+      local crate = recordWith(224739, srcEnum.CROWN, "crate") -- Aetherean Rupture, Liminal
       assert.is_not_nil(crate)
       assert.equals(FurC.Constants.CrownCrateIds.ANU_PAD, crate.source.crate)
       assert.is_nil(crate.cost)
 
       -- a pack row: the pack's item id, resolvable to a link
-      local pack = recordFor(224853, srcEnum.CROWN) -- A Hero Strides Forth Painting, Gold
+      local pack = recordWith(224853, srcEnum.CROWN, "packs") -- A Hero Strides Forth Painting, Gold
       assert.is_not_nil(pack)
-      assert.equals(FurC.Constants.ItemPacks.DARIEN, pack.source.pack)
+      assert.same({ FurC.Constants.ItemPacks.DARIEN }, pack.source.packs)
 
-      -- a multi-source row answers with every source it has, on the one record
-      local both = recordFor(223178, srcEnum.EDITOR) -- Worm Cult Winch, Chain
-      assert.is_not_nil(both)
-      assert.equals(CURT_CROWNS, both.cost.currency)
-      assert.equals(2800, both.cost.amount)
-      assert.same({ 13881 }, both.source.houses)
+      local editorRecords = recordsFor(223178, srcEnum.EDITOR) -- Worm Cult Winch, Chain
+      assert.equals(1, #editorRecords)
+      local offer = editorRecords[1]
+      assert.equals(CURT_CROWNS, offer.cost.currency)
+      assert.equals(2800, offer.cost.amount)
+      assert.is_nil(offer.source.houses)
+
+      -- a house is an ordinary Crown offer
+      local house = recordWith(223178, srcEnum.CROWN, "houses")
+      assert.is_not_nil(house)
+      assert.same({ 13881 }, house.source.houses)
+    end)
+
+    -- Naming a furnishing by its blueprint returns the furnishing
+    it("GetItemDescription answers for the furnishing when named by its recipe", function()
+      FurC.EnsureDB(true)
+      -- every craftable item that describes itself, not the first one found
+      local checked, mismatches = 0, {}
+      for _, itemId in ipairs(api.GetItemIds()) do
+        local entry = api.GetEntry(itemId)
+        local byItem = (entry and entry.blueprint and api.GetItemDescription(itemId, entry)) or ""
+        if byItem ~= "" then
+          checked = checked + 1
+          -- with and without the entry, by id and by link, one answer
+          for _, named in ipairs({
+            api.GetItemDescription(entry.blueprint, entry),
+            api.GetItemDescription(entry.blueprint),
+            api.GetItemDescription(Test.link(entry.blueprint), entry),
+          }) do
+            if named ~= byItem and #mismatches < 5 then
+              mismatches[#mismatches + 1] = string.format(
+                "%d named by recipe %d describes as %q, by itself %q",
+                itemId,
+                entry.blueprint,
+                named,
+                byItem
+              )
+            end
+          end
+        end
+      end
+      assert.is_true(checked > 0, "no item in the data set is craftable and describes itself")
+      assert.equals("", table.concat(mismatches, " | "))
     end)
 
     it("endpoints and deprecated aliases keep stable shapes", function()
@@ -336,10 +424,14 @@ Taneth("FurC:Lib", function()
       local itemLink = api.GetItemLink(itemId)
       assert.equals("string", type(itemLink))
       assert.is_true(#itemLink > 0)
+      -- the flat aliases answer empty, they do not read the DB
+      assert.same({}, FurC.Find(itemId))
+      assert.equals("", FurC.GetItemDescription(itemId, api.GetEntry(itemId), true))
+      assert.same({}, FurC.GetIngredients(itemLink))
+      assert.equals("", FurC.GetMats(itemLink))
+      -- except id and link translation
       assert.equals(api.GetItemId, FurC.GetItemId)
       assert.equals(api.GetItemLink, FurC.GetItemLink)
-      assert.equals(api.GetIngredients, FurC.GetIngredients)
-      assert.equals(api.GetItemDescription, FurC.GetItemDescription)
       assert.equals(itemId, api.GetItemId(itemId))
       assert.equals(itemId, api.GetItemId(itemLink))
       assert.equals(itemLink, api.GetItemLink(itemLink))
@@ -347,15 +439,11 @@ Taneth("FurC:Lib", function()
       local sourceType = api.GetSourceTypes()
       assert.equals("number", type(sourceType.CROWN))
       assert.equals(FurC.Constants.ItemSources.CROWN, sourceType.CROWN)
+      assert.is_nil(api.SourceType, "the shared enum table is still published")
 
       local entry = api.GetEntry(DS.luxItem)
       assert.equals("string", type(api.GetItemDescription(DS.luxItem, entry)))
       assert.equals("table", type(api.GetIngredients(Test.link(DS.craftable), api.GetEntry(DS.craftable))))
-
-      -- an entry with a blueprint renders a list, one without falls back to the re-scan notice
-      local mats = FurC.GetMats(Test.link(DS.craftable), api.GetEntry(DS.craftable))
-      assert.equals("string", type(mats))
-      assert.is_true(mats ~= FurC.GetMats(UNKNOWN_ID))
 
       local missingCurrency, missingAmount = api.GetMiscItemPrice(UNKNOWN_ID, 1, sourceType.CROWN)
       assert.is_nil(missingCurrency)
@@ -376,10 +464,6 @@ Taneth("FurC:Lib", function()
         assert.is_true(#described.label > 0)
       end
       assert.equals("Luxury Furnisher", info[sourceType.LUXURY].label)
-
-      -- a renamed source keeps its old key as a deprecated alias
-      assert.equals(sourceType.STEAL_CONTAINER, sourceType.CONTAINER)
-      assert.equals("STEAL_CONTAINER", info[sourceType.CONTAINER].key)
 
       -- LATEST shares a value with the update it points at, so the naive inverse
       -- of GetDataVersions loses a name; the endpoint does not
@@ -432,6 +516,23 @@ Taneth("FurC:Lib", function()
       local crateCurrency, crateAmount = api.GetMiscItemPrice(125654, 3, sourceType.CROWN) -- Tapestry, Clavicus Vile
       assert.is_nil(crateCurrency)
       assert.is_nil(crateAmount)
+    end)
+
+    -- A row lives in one update's file, and the record builders answer for it whatever update you ask about
+    it("GetMiscItemPrice finds a row filed under another update", function()
+      FurC.EnsureDB(true)
+      local sourceType = api.GetSourceTypes()
+      local versions = api.GetDataVersions()
+
+      -- the same crown-store row the test above prices under its own update
+      local currency, amount = api.GetMiscItemPrice(134686, versions.HOMESTEAD, sourceType.CROWN)
+      assert.equals(CURT_CROWNS, currency)
+      assert.equals(2000, amount)
+
+      -- an item with no row at all still answers nothing, whatever update is named
+      local unknownCurrency, unknownAmount = api.GetMiscItemPrice(UNKNOWN_ID, versions.HOMESTEAD, sourceType.CROWN)
+      assert.is_nil(unknownCurrency)
+      assert.is_nil(unknownAmount)
     end)
   end)
 end)

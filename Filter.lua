@@ -28,19 +28,21 @@ local hideRumours = false
 local showAllOnTextSearch = false
 local showAllRumourOnTextSearch = false
 
-local recipeArray, itemId, itemLink, itemType, sItemType, recipeIndex, recipeListIndex
+local recipeArray, sourceBits, itemId, itemLink, itemType, sItemType
 
 local LFC = LibFurnitureCatalogue
 local src = LFC.API.GetSourceTypes()
-local ver = LFC.Internal.Constants.Versioning
-local npc = LFC.Internal.Constants.NPC
-local npcIds = LFC.Internal.Constants.NpcIds
+local ver = LFC.API.GetDataVersions()
+local build = LFC.Internal.Build
+local toSourceMask, maskHasSource, eachSource = build.SourceMask, build.HasSource, build.EachSource
+local ONLY_RUMOUR = build.SourceMask({ [src.RUMOUR] = true })
 
 -- Local imports for performance
 local GetItemLinkName = GetItemLinkName
 local LocaleAwareToLower = LocaleAwareToLower
 local gsub = string.gsub
 local match = string.match
+local getEntry = LFC.API.GetEntry
 local getItemLink = LFC.API.GetItemLink
 
 -- Build item link lazily (only if required and not already cached)
@@ -162,77 +164,48 @@ local function matchVersionDropdown()
   return dropdownChoiceVersion == 1 or recipeArray.version == dropdownChoiceVersion
 end
 
-local validSourcesForOther = {
-  [src.FESTIVAL_DROP] = true,
-  [src.DROP] = true,
-  [src.FISHING] = true,
-  [src.GUILDSTORE] = true,
-  [src.ANTIQUITY] = true,
-  [src.DUNGEON] = true,
-  [src.HARVEST] = true,
-  [src.CHEST] = true,
-  [src.QUEST] = true,
-  [src.PICKPOCKET] = true,
-  [src.STEAL_CONTAINER] = true,
-}
-
 -- Multi-source: item matches filter if source is in list
 local function hasSource(s)
-  local sources = recipeArray.sources
-  return sources ~= nil and sources[s] == true
+  return maskHasSource(sourceBits, s)
 end
 
-local function isHomeGoodsFurnisherItem()
-  local versionData = FurC.AchievementVendors[recipeArray.version]
-  if not versionData then
-    return false
+local sourceRecords
+local function records()
+  if not sourceRecords then
+    sourceRecords = LFC.API.GetSourceDetails(itemId)
   end
-  for locationName, locationData in pairs(versionData) do
-    local vendorData = locationData[npcIds.HGF]
-    if vendorData and vendorData[itemId] then
+  return sourceRecords
+end
+
+local function hasCurrency(source, currency)
+  for _, record in ipairs(records()) do
+    if record.source.type == source and record.cost and record.cost.currency == currency then
       return true
     end
   end
   return false
 end
 
--- most of those items are achievement-gated, but guild stewards, mystic and the quest rows are not
--- `achievement = 0` still belongs in here, just means we don't have an achievement ID
-local function isAchievementGatedItem()
-  local versionData = FurC.AchievementVendors[recipeArray.version]
-  if not versionData then
-    return false
-  end
-  for locationName, locationData in pairs(versionData) do
-    for vendorNpc, vendorData in pairs(locationData) do
-      local row = vendorData[itemId]
-      if type(row) == "table" and row.achievement then
-        return true
-      end
-    end
-  end
-  return false
-end
-
 local function isEventTradeBarItem()
-  local versionData = FurC.EventItems[recipeArray.version]
-  if not versionData then
+  if not hasSource(src.FESTIVAL_DROP) then
     return false
   end
-  for eventName, sources in pairs(versionData) do
-    local items = sources[npc.EVENT]
-    local item = items and items[itemId]
-    if item and item.itemPrice then
-      local currency = item.currency or CURT_TRADE_BARS
-      if currency == CURT_TRADE_BARS then
-        return true
-      end
+  for _, record in ipairs(records()) do
+    if
+      record.source.type == src.FESTIVAL_DROP
+      and record.source.vendor == SI_FURC_TRADERS_EVENT
+      and record.cost
+      and record.cost.currency == CURT_TRADE_BARS
+    then
+      return true
     end
   end
   return false
 end
 
 -- Source: All, All (craftable), Craftable (known), craftable (unknown), purchasable
+--
+-- A tab that has children matches when its own source or any child's matches (membership is in SourceTabs.lua)
 local function matchesSource(candidate)
   -- "All", don't care
   if src.NONE == candidate then
@@ -241,10 +214,6 @@ local function matchesSource(candidate)
   if src.FAVE == candidate then
     return FurC.IsFavoriteById(itemId)
   end
-  -- Crafting sub-filters. KNOWN/UNKNOWN from LCK
-  if src.CRAFTING == candidate then
-    return hasSource(src.CRAFTING)
-  end
   if src.CRAFTING_KNOWN == candidate or src.CRAFTING_UNKNOWN == candidate then
     if not hasSource(src.CRAFTING) then
       return false
@@ -252,122 +221,54 @@ local function matchesSource(candidate)
     local matchingDropdownSource = (isRecipeArrayKnown() and src.CRAFTING_KNOWN) or src.CRAFTING_UNKNOWN
     return matchingDropdownSource == candidate
   end
-  if src.VENDOR == candidate then
-    return hasSource(src.VENDOR)
-  end
   if FurC.SourceFilters.ACHIEVEMENT == candidate then
-    return hasSource(src.VENDOR) and isAchievementGatedItem()
+    return hasSource(src.ACHIEVEMENT)
   end
   if FurC.SourceFilters.HOME_GOODS == candidate then
-    return hasSource(src.VENDOR) and isHomeGoodsFurnisherItem()
+    return hasSource(src.HOME_GOODS)
   end
+  -- the writ vendor tab is the vendor's own source under another name
   if src.WRIT_VENDOR == candidate then
     return hasSource(src.ROLIS)
-  end
-  if src.PVP == candidate then
-    return hasSource(src.PVP)
   end
   if FurC.SourceFilters.ALLIANCE_POINTS == candidate then
     if not hasSource(src.PVP) then
       return false
     end
-    -- exclude TelVar items from the AP filter
-    local versionData = FurC.PVP[recipeArray.version]
-    if not versionData then
-      return true
-    end
-    for vendorName, vendorData in pairs(versionData) do
-      for locationName, locationData in pairs(vendorData) do
-        local item = locationData[itemId]
-        if item and item.currency == CURT_TELVAR_STONES then
-          return false
-        end
-      end
-    end
-    return true
+    return hasCurrency(src.PVP, CURT_ALLIANCE_POINTS)
   end
   if src.TELVAR == candidate then
-    if not hasSource(src.PVP) then
-      return false
-    end
-    -- look up the item in PVP data to check its currency
-    local versionData = FurC.PVP[recipeArray.version]
-    if not versionData then
-      return false
-    end
-    for vendorName, vendorData in pairs(versionData) do
-      for locationName, locationData in pairs(vendorData) do
-        local item = locationData[itemId]
-        if item then
-          return item.currency == CURT_TELVAR_STONES
-        end
-      end
-    end
-    return false
+    return hasSource(src.TELVAR) or (hasSource(src.PVP) and hasCurrency(src.PVP, CURT_TELVAR_STONES))
   end
 
-  if FurC.SourceFilters.CURRENCY == candidate then
-    return matchesSource(src.CROWN)
-      or matchesSource(src.VENDOR)
-      or matchesSource(src.PVP)
-      or matchesSource(src.TOMES)
-      or matchesSource(src.BAZAAR)
-  end
-  
-  if src.OTHER == candidate then
-    -- match if sources are part of OTHER too
-    local sources = recipeArray.sources
-    if sources ~= nil then
-      for s in pairs(sources) do
-        if validSourcesForOther[s] then
-          return true
-        end
-      end
-    end
-    return false
-  end
-
-  if src.CROWN == candidate then
-    return hasSource(src.CROWN) or hasSource(src.EDITOR)
-  end
-
-  --TODO: twerkaround, make it pretty later
+  -- the crown store tab is the crown source alone, without the housing editor beside it
   if FurC.SourceFilters.CROWN_STORE == candidate then
     return hasSource(src.CROWN)
   end
 
-  if src.EDITOR == candidate then
-    return hasSource(src.EDITOR)
+  if FurC.SourceFilters.GOLD_COAST_BAZAAR == candidate then
+    return hasSource(src.BAZAAR)
   end
-  
-  if src.JUSTICE == candidate then
-    return hasSource(src.PICKPOCKET) or hasSource(src.STEAL_CONTAINER)
+
+  if FurC.SourceFilters.IMPRESARIO == candidate then
+    return isEventTradeBarItem()
   end
-  
-  if src.BAZAAR == candidate then
-    return hasSource(src.BAZAAR) or isEventTradeBarItem()
+
+  -- a tab with children: its own source, or any tab below it
+  local node = FurC.GetSourceTreeNode(candidate)
+  if node and node.children then
+    -- a grouping tab can be a source (Crown Store, Vendor), or exist to just hold children (Currency)
+    if candidate > 0 and hasSource(candidate) then
+      return true
+    end
+    for _, child in ipairs(node.children) do
+      if child.id and matchesSource(child.id) then
+        return true
+      end
+    end
+    return false
   end
-  
-  if src.DUNGEON == candidate then
-    return hasSource(src.DUNGEON)
-  end
-  if src.HARVEST == candidate then
-    return hasSource(src.HARVEST)
-  end
-  if src.CHEST == candidate then
-    return hasSource(src.CHEST)
-  end
-  if src.QUEST == candidate then
-    return hasSource(src.QUEST)
-  end
-  if src.PICKPOCKET == candidate then
-    return hasSource(src.PICKPOCKET)
-  end
-  if src.CONTAINER == candidate then
-    return hasSource(src.CONTAINER)
-  end
-  
-  -- direct options: CROWN, RUMOUR, LUXURY, BAZAAR
+
   return hasSource(candidate)
 end
 
@@ -409,7 +310,7 @@ local function matchSearchString()
 end
 
 local function matchCraftingTypeFilter()
-  if not recipeArray.origin == src.CRAFTING then
+  if not maskHasSource(sourceBits, src.CRAFTING) then
     return false
   end
   local filterType = query.GetCraftingSkillType(itemId, recipeArray)
@@ -459,16 +360,19 @@ end
 
 function FurC.MatchFilter(currentItemId, currentRecipeArray)
   itemId = currentItemId
+  sourceRecords = nil
   itemLink = nil -- built on demand
-  recipeArray = currentRecipeArray or FurC.Find(ensureItemLink())
+  recipeArray = currentRecipeArray or getEntry(ensureItemLink())
+  -- an item the database does not know matches nothing: the checks below all read the row
   if nil == recipeArray then
     return false
   end
+  sourceBits = toSourceMask(recipeArray.sources)
+  if build.HasSource(sourceBits, src.IGNORED) and ddSource ~= src.IGNORED then
+    return false
+  end
 
-  local origin = recipeArray.origin
-
-  -- Hidden rumours bypass filter and only show up through text search override
-  if origin == src.RUMOUR and hideRumours then
+  if sourceBits == ONLY_RUMOUR and hideRumours then
     if filterBooks(itemId, recipeArray) then
       return false
     end

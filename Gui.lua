@@ -149,6 +149,80 @@ end
 -- matches maxLineCount on the Mats label in both slot templates
 local MATS_MAX_LINES = 2
 
+-- Master Merchant price cache (keyed by itemLink). Cleared whenever the
+-- visible data lines are rebuilt so stale entries do not persist across
+-- filter / sort changes. MasterMerchant is an optional dependency.
+local mmStatsCache = {}
+
+local function getMasterMerchantStats(itemLink)
+  if itemLink == nil or itemLink == "" then
+    return nil
+  end
+  local cached = mmStatsCache[itemLink]
+  if cached ~= nil then
+    return cached
+  end
+  if MasterMerchant == nil or type(MasterMerchant.itemStats) ~= "function" then
+    -- MasterMerchant not installed / not ready yet: do not cache so values are
+    -- picked up once MM becomes available.
+    return nil
+  end
+  local ok, result = pcall(function()
+    return MasterMerchant:itemStats(itemLink, false)
+  end)
+  if ok and type(result) == "table" then
+    mmStatsCache[itemLink] = result
+    return result
+  elseif ok then
+    -- MM answered but has no data for this link: cache the miss.
+    mmStatsCache[itemLink] = false
+  end
+  return nil
+end
+
+-- Master Merchant craft cost cache (keyed by itemLink). Cleared together
+-- with mmStatsCache whenever the visible data lines are rebuilt.
+-- MM 3.x does NOT expose a craftCost field on itemStats(); the crafting
+-- cost must be read from itemCraftPrice(), which derives it from the
+-- recipe that crafts the linked item — so the link must be the finished
+-- furnishing, never the recipe/plan link. CraftCostPriceTip() is only a
+-- formatted wrapper around it ("Coût de fabrication: 1 234"), unusable in
+-- the column, so the raw numeric value is used for both display and sort.
+local mmCraftCostCache = {}
+
+local function getMasterMerchantCraftCostValue(itemLink)
+  -- Raw numeric craft cost from MM, or nil.
+  if itemLink == nil or itemLink == "" then
+    return nil
+  end
+  local cached = mmCraftCostCache[itemLink]
+  if cached ~= nil then
+    return cached.value
+  end
+  if MasterMerchant == nil or not MasterMerchant.isInitialized then
+    return nil
+  end
+  local value = nil
+  if type(MasterMerchant.itemCraftPrice) == "function" then
+    local ok, result = pcall(MasterMerchant.itemCraftPrice, MasterMerchant, itemLink)
+    if ok and type(result) == "number" and result > 0 then
+      value = result
+    end
+  end
+  local entry = mmCraftCostCache[itemLink] or {}
+  entry.value = value
+  mmCraftCostCache[itemLink] = entry
+  return value
+end
+
+-- Formats a gold amount rounded to the nearest integer, grouped with
+-- French-style thousands separators (spaces): 12069.895 -> "12 070".
+local function formatGoldAmount(value)
+  local rounded = math.floor((value or 0) + 0.5)
+  local reversed = tostring(rounded):reverse():gsub("(%d%d%d)", "%1 ")
+  return (reversed:reverse():gsub("^%s+", ""))
+end
+
 -- Prevent first line of a description from overlapping divider (it's offset when truncated). Instead it gets a box of exactly the lines it draws.
 local function fitMats(line)
   local mats = line.mats
@@ -182,6 +256,8 @@ local function updateLineVisibility()
       curLine.icon:SetAlpha(0)
       curLine.text:SetText("")
       curLine.mats:SetText("")
+      curLine.craftCost:SetText("")
+      curLine.mmAvg:SetText("")
     else
       -- only the blueprint column needs the row, so the copy is not paid per redraw otherwise
       local recipeArray = FurC.showBlueprints and getEntry(curData.itemLink)
@@ -199,6 +275,29 @@ local function updateLineVisibility()
       local mats = sourceFormat.FormatListText(curData.itemId, curData, listOpts, selectedTypes)
       curLine.mats:SetText(mats)
       fitMats(curLine)
+
+      -- Master Merchant price columns. The sale average (avgPrice) is read
+      -- for the finished furnishing (curData.itemLink) via itemStats(); the
+      -- craft cost is read via itemCraftPrice() on the same product link,
+      -- because MM derives it from the recipe that crafts the linked item.
+      -- CraftCostPriceTip() is NOT used for display: it returns the full
+      -- localized tooltip line ("Coût de fabrication: 1 234" + coin icon)
+      -- instead of a bare number. nil (= no data) renders as a blank.
+      -- When the sale price exists, the number of sales observed by MM is
+      -- appended in parentheses (same itemStats result, same time window
+      -- as the average price); if it is not available the price is shown
+      -- alone, without inventing a (0).
+      local saleStats = getMasterMerchantStats(curData.itemLink)
+      local mmAvg = (saleStats and saleStats.avgPrice) or nil
+      local craftCost = getMasterMerchantCraftCostValue(curData.itemLink)
+
+      local mmAvgText = (mmAvg and mmAvg > 0) and formatGoldAmount(mmAvg) or ""
+      if mmAvgText ~= "" and saleStats and saleStats.numSales then
+        mmAvgText = mmAvgText .. " (" .. tostring(saleStats.numSales) .. ")"
+      end
+
+      curLine.craftCost:SetText((craftCost and craftCost > 0) and formatGoldAmount(craftCost) or "")
+      curLine.mmAvg:SetText(mmAvgText)
     end
   end
 
@@ -264,10 +363,35 @@ local sortedRevision
 local function buildSortedIndex(sortName, sortUp)
   local data = FurC.DB
   local ids, vals = {}, {}
+
+  -- MMAvg / CraftCost are runtime-computed (Master Merchant) values, not DB
+  -- fields, so they are computed here in the pre-sort pass via the same
+  -- getMasterMerchantStats helper used to render the columns. Sorting runs
+  -- before line rendering, so the value must be available now (it is: MM is
+  -- queried directly on a cache miss).
+  -- Display treats 0 / nil as a blank cell, so a 0 sort value must behave like
+  -- nil (sort to the end) to match what the user sees.
+  local function positiveOrNil(value)
+    return (value and value > 0) and value or nil
+  end
+  local function getMMAvg(itemId)
+    local stats = getMasterMerchantStats(getItemLink(itemId))
+    return positiveOrNil(stats and stats.avgPrice)
+  end
+  local function getCraftCost(itemId)
+    -- Numeric craft cost for sorting, via MM's itemCraftPrice() on the
+    -- finished product link (see getMasterMerchantCraftCostValue).
+    return positiveOrNil(getMasterMerchantCraftCostValue(getItemLink(itemId)))
+  end
+
   for itemId, recipeArray in pairs(data) do
     ids[#ids + 1] = itemId
     if sortName == "itemName" then
       vals[itemId] = GetItemLinkName(getItemLink(itemId))
+    elseif sortName == "MMAvg" then
+      vals[itemId] = getMMAvg(itemId)
+    elseif sortName == "CraftCost" then
+      vals[itemId] = getCraftCost(itemId)
     else
       vals[itemId] = recipeArray[sortName]
     end
@@ -317,6 +441,8 @@ end
 FurC.BuildDisplayRow = buildDisplayRow
 
 local function updateScrollDataLinesData()
+  mmStatsCache = {}
+  mmCraftCostCache = {}
   local dataLines = {}
   local data = FurC.DB
   local order = ensureSortedIndex()
@@ -394,6 +520,8 @@ function FurC.SetLineHeight(applyTemplate)
 
     curLine:GetNamedChild("Name"):SetFont(nameFont)
     curLine:GetNamedChild("Mats"):SetFont(matsFont)
+    curLine:GetNamedChild("CraftCost"):SetFont(matsFont)
+    curLine:GetNamedChild("MMAvg"):SetFont(matsFont)
     curLine:SetHeight(lineHeight)
     local btnHeight = (useTinyUi and 0 or lineHeight + 3)
     curLine:GetNamedChild("Button"):SetDimensions(btnHeight, btnHeight)
@@ -419,11 +547,13 @@ function FurC.ApplyLineTemplate()
     resizeDropdowns(230)
     FurCGui_Header_SortBar_Description:ClearAnchors()
     FurCGui_Header_SortBar_Description:SetAnchor(TOPLEFT, FurCGui_Header_SortBar_Name, TOPRIGHT, -82)
+    FurCGui_Header_SortBar_Description:SetAnchor(BOTTOMRIGHT, FurCGui_Header_SortBar_CraftCost, BOTTOMLEFT, -8)
   else
     FurC.SlotTemplate = "FurC_SlotTemplate"
     resizeDropdowns(300)
     FurCGui_Header_SortBar_Description:ClearAnchors()
     FurCGui_Header_SortBar_Description:SetAnchor(TOPLEFT, FurCGui_Header_SortBar_Name, TOPRIGHT, 0)
+    FurCGui_Header_SortBar_Description:SetAnchor(BOTTOMRIGHT, FurCGui_Header_SortBar_CraftCost, BOTTOMLEFT, -8)
   end
 
   FurC.SetLineHeight(true)
@@ -454,6 +584,8 @@ local function createGui()
       line.icon = line:GetNamedChild("Button"):GetNamedChild("Icon")
       line.text = line:GetNamedChild("Name")
       line.mats = line:GetNamedChild("Mats")
+      line.craftCost = line:GetNamedChild("CraftCost")
+      line.mmAvg = line:GetNamedChild("MMAvg")
 
       line:SetHidden(false)
       line:SetMouseEnabled(true)
@@ -474,6 +606,10 @@ local function createGui()
     FurCGui_ListHolder.lines = {}
     FurCGui_ListHolder.NameSort = FurCGui_Header_SortBar:GetNamedChild("_Name")
     FurCGui_ListHolder.NameSort.icon = FurCGui_ListHolder.NameSort:GetNamedChild("_Button")
+    FurCGui_ListHolder.MMAvgSort = FurCGui_Header_SortBar:GetNamedChild("_MMAvg")
+    FurCGui_ListHolder.MMAvgSort.icon = FurCGui_ListHolder.MMAvgSort:GetNamedChild("_Button")
+    FurCGui_ListHolder.CraftCostSort = FurCGui_Header_SortBar:GetNamedChild("_CraftCost")
+    FurCGui_ListHolder.CraftCostSort.icon = FurCGui_ListHolder.CraftCostSort:GetNamedChild("_Button")
 
     local predecessor
     for i = 1, FurCGui_ListHolder.maxLines do

@@ -1,6 +1,14 @@
 8.0.1 (2026-10-11)
 - hotfix for required LFC version
 
+8.0.2 (2026-10-11)
+- restore Master Merchant integration lost during the 8.0.0 rework: "prix de vente" (MM sale
+  average, from itemStats) and "Craft Cost" (MM itemCraftPrice) columns are filled again,
+  sortable via the existing header buttons, and the Description label re-anchored to CraftCost
+- the sale average column now shows the MM sale count in parentheses when the price exists
+  (e.g. "12 070 (15)"); price and count come from the same itemStats result (same time window)
+- non testé dans ESO (vérification hors jeu : compilation Lua 5.1 + harnais simulé)
+
 8.0.0 (2026-10-11)
 - NEW source filter dropdown rework (new categories and multi-select via right-click)!
 - larger furnishing pic size, description is 2 lines

@@ -223,6 +223,24 @@ local function formatGoldAmount(value)
   return (reversed:reverse():gsub("^%s+", ""))
 end
 
+-- A sale average is only visible when the craft cost is known and strictly
+-- lower (user request: show the sale price only if > craft cost). A missing
+-- craft cost does NOT default to zero: without a cost there is no way to
+-- establish that the price beats it, so the price stays hidden. Same rule for
+-- the sort value, so the column order matches what is displayed. Raw numeric
+-- values are compared, before the display rounding.
+local function getVisibleSaleAverage(saleStats, craftCost)
+  local saleAverage = saleStats and saleStats.avgPrice
+  if type(saleAverage) == "number"
+    and saleAverage > 0
+    and type(craftCost) == "number"
+    and craftCost > 0
+    and saleAverage > craftCost then
+    return saleAverage
+  end
+  return nil
+end
+
 -- Prevent first line of a description from overlapping divider (it's offset when truncated). Instead it gets a box of exactly the lines it draws.
 local function fitMats(line)
   local mats = line.mats
@@ -283,15 +301,14 @@ local function updateLineVisibility()
       -- CraftCostPriceTip() is NOT used for display: it returns the full
       -- localized tooltip line ("Coût de fabrication: 1 234" + coin icon)
       -- instead of a bare number. nil (= no data) renders as a blank.
-      -- When the sale price exists, the number of sales observed by MM is
-      -- appended in parentheses (same itemStats result, same time window
-      -- as the average price); if it is not available the price is shown
-      -- alone, without inventing a (0).
+      -- The sale price is shown ONLY when it is strictly above the craft
+      -- cost (getVisibleSaleAverage); a hidden price also hides its number
+      -- of sales, and the craft cost column is unaffected.
       local saleStats = getMasterMerchantStats(curData.itemLink)
-      local mmAvg = (saleStats and saleStats.avgPrice) or nil
       local craftCost = getMasterMerchantCraftCostValue(curData.itemLink)
+      local mmAvg = getVisibleSaleAverage(saleStats, craftCost)
 
-      local mmAvgText = (mmAvg and mmAvg > 0) and formatGoldAmount(mmAvg) or ""
+      local mmAvgText = mmAvg and formatGoldAmount(mmAvg) or ""
       if mmAvgText ~= "" and saleStats and saleStats.numSales then
         mmAvgText = mmAvgText .. " (" .. tostring(saleStats.numSales) .. ")"
       end
@@ -369,14 +386,20 @@ local function buildSortedIndex(sortName, sortUp)
   -- getMasterMerchantStats helper used to render the columns. Sorting runs
   -- before line rendering, so the value must be available now (it is: MM is
   -- queried directly on a cache miss).
+  -- The MMAvg sort uses getVisibleSaleAverage: a price hidden because it is
+  -- not above the craft cost must not drive the order either, so it sorts as
+  -- nil (to the end), exactly like the blank cells the user sees.
   -- Display treats 0 / nil as a blank cell, so a 0 sort value must behave like
   -- nil (sort to the end) to match what the user sees.
   local function positiveOrNil(value)
     return (value and value > 0) and value or nil
   end
   local function getMMAvg(itemId)
-    local stats = getMasterMerchantStats(getItemLink(itemId))
-    return positiveOrNil(stats and stats.avgPrice)
+    local itemLink = getItemLink(itemId)
+    return getVisibleSaleAverage(
+      getMasterMerchantStats(itemLink),
+      getMasterMerchantCraftCostValue(itemLink)
+    )
   end
   local function getCraftCost(itemId)
     -- Numeric craft cost for sorting, via MM's itemCraftPrice() on the
@@ -413,8 +436,11 @@ end
 
 local function ensureSortedIndex()
   local sortName, sortDirection = FurC.GetSortParams()
-  sortName = sortName or "itemName"
-  local sortUp = ((ZO_SORT_ORDER_UP and sortDirection == "up") or ZO_SORT_ORDER_DOWN)
+  -- Default sort: sale average, highest first (user request). "up" maps to
+  -- ZO_SORT_ORDER_UP; for numeric columns this file's comparator uses
+  -- sortUp = va > vb, which is descending (highest first).
+  sortName = sortName or "MMAvg"
+  local sortUp = sortDirection == "up"
   local key = tostring(sortName) .. "|" .. tostring(sortUp)
   local revision = getDBRevision()
   if sortedIndex and key == sortedIndexKey and sortedRevision == revision then
@@ -443,6 +469,16 @@ FurC.BuildDisplayRow = buildDisplayRow
 local function updateScrollDataLinesData()
   mmStatsCache = {}
   mmCraftCostCache = {}
+  -- MMAvg / CraftCost are runtime-computed from Master Merchant, not from the
+  -- DB, so a DB-revision check alone cannot detect that the values changed
+  -- (MM becoming available, new sales data). The caches were just cleared:
+  -- drop the computed sort index for those columns so ensureSortedIndex()
+  -- rebuilds it with fresh MM values. Name sorting keeps its cache.
+  local sortName = (FurC.GetSortParams())
+  if sortName == "MMAvg" or sortName == "CraftCost" then
+    sortedIndex = nil
+    sortedIndexKey = nil
+  end
   local dataLines = {}
   local data = FurC.DB
   local order = ensureSortedIndex()
@@ -1016,6 +1052,12 @@ function FurC.InitGui()
 
   createGui()
   FurC.guiInitialized = true -- NOW it exists
+
+  -- Reflect the initial (default) sort on the header buttons before the first
+  -- UpdateGui, so the active column shows its arrow at first opening.
+  if type(FurC.UpdateSortButtons) == "function" then
+    FurC.UpdateSortButtons()
+  end
 
   local slider = FurCGui_ListHolder_Slider
   slider:SetMinMax(1, #FurCGui_ListHolder.dataLines)

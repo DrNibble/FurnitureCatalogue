@@ -1,5 +1,18 @@
-8.0.1 (2026-10-11)
-- hotfix for required LFC version
+8.0.3 (2026-10-13)
+- le prix de vente n'est affiché (et trié) que s'il est strictement supérieur au coût de
+  fabrication (MM itemCraftPrice) ; une vente inférieure ou égale au coût, ou un coût
+  absent/à 0, laisse la cellule vide (le nombre de ventes n'est pas non plus affiché). Le
+  coût de fabrication reste affiché indépendamment.
+- tri par défaut de la liste : prix de vente (MMAvg) décroissant, du plus haut au plus bas
+  (les prix masqués et les cellules vides vont à la fin) ; l'indicateur de la colonne MMAvg
+  est posé dès la première ouverture de la fenêtre.
+- le tri MMAvg/CraftCost est invalidé quand les caches Master Merchant sont vidés (MM
+  devient disponible, nouvelles ventes) : l'ordre reflète les valeurs MM fraîches même sans
+  changement de colonne, de direction ou de révision de DB.
+- non testé dans ESO (vérification hors jeu : compilation Lua 5.1 + harnais simulé 59
+  assertions exécutant les blocs réellement extraits de Gui.lua/GuiXmlBridge.lua
+  (fillLine, ensureSortedIndex, updateScrollDataLinesData, InitGui, UpdateSortButtons,
+  GuiOnSort), test/unit_mm_sale_visibility.lua)
 
 8.0.2 (2026-10-11)
 - restore Master Merchant integration lost during the 8.0.0 rework: "prix de vente" (MM sale
@@ -8,6 +21,9 @@
 - the sale average column now shows the MM sale count in parentheses when the price exists
   (e.g. "12 070 (15)"); price and count come from the same itemStats result (same time window)
 - non testé dans ESO (vérification hors jeu : compilation Lua 5.1 + harnais simulé)
+
+8.0.1 (2026-10-11)
+- hotfix for required LFC version
 
 8.0.0 (2026-10-11)
 - NEW source filter dropdown rework (new categories and multi-select via right-click)!

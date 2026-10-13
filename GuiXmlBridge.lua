@@ -207,8 +207,11 @@ function FurC.GuiCategoryMouseUp(control)
   FurC.SetFilterFurnCategory(control.categoryId)
 end
 
-local sortBy = nil
-local sortDirection = "down"
+local sortBy = "MMAvg"
+local sortDirection = "up"
+-- Default sort: MMAvg (sale average), highest first (user request). "up" maps
+-- to ZO_SORT_ORDER_UP; for numeric columns Gui.lua's comparator uses
+-- sortUp = va > vb, which is descending (highest first).
 
 -- Sort header buttons. $(parent)_Button under each header Label resolves to:
 --   FurCGui_Header_SortBar_Name_Button / _MMAvg_Button / _CraftCost_Button
@@ -237,6 +240,10 @@ local function updateSortButtons()
     end
   end
 end
+
+-- Exposed so the initial sort (before any user click) can be reflected on the
+-- header buttons at GUI creation time (FurC.InitGui).
+FurC.UpdateSortButtons = updateSortButtons
 
 function FurC.GuiOnSort(key)
   -- set icon texture

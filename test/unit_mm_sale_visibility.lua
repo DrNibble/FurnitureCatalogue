@@ -383,6 +383,132 @@ pcall(T.fillLine, line5, curDataFor(101), 1) -- prix visible
 pcall(T.fillLine, line5, curDataFor(102), 1) -- réutilisé avec prix masqué
 check("fillLine réel : ligne réutilisée, pas de prix résiduel", line5.mmAvgText == "")
 
+-- 6. station de fabrication : affichée entre parenthèses après le nom
+-- FurC.PrintCraftingStation (Chat.lua) retourne " (Station)" ou "" ; on stubbe
+-- pour vérifier que fillLine l'appelle bien avec (itemId, curData) et
+-- concatène le résultat après le nom.
+local stationCalls = {}
+FurC.PrintCraftingStation = function(itemId, recipeArray)
+  table.insert(stationCalls, { itemId = itemId, hasBlueprint = recipeArray and recipeArray.blueprint ~= nil })
+  if itemId == 101 then return " (Bois de charpenterie)" end
+  if itemId == 105 then return " (Forge)" end
+  return "" -- station inconnue : rien d'ajouté
+end
+
+local line6 = makeLine()
+local okFill6 = pcall(T.fillLine, line6, curDataFor(101), 1)
+check("fillLine réel : exécution sans erreur (station)", okFill6)
+check("fillLine réel : PrintCraftingStation appelé", #stationCalls == 1 and stationCalls[1].itemId == 101)
+-- égalité EXACTE du texte (pas seulement des sous-chaînes) : lien intact,
+-- suffixe après le lien, pas de favori.
+check("fillLine réel : texte exact = lien H0 + station",
+  line6.nameText == "|H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h (Bois de charpenterie)")
+check("fillLine réel : nom contient toujours le lien (H0)",
+  line6.nameText ~= nil and line6.nameText:find("|H0:item:101", 1, true) ~= nil)
+
+local line7 = makeLine()
+local okFill7 = pcall(T.fillLine, line7, curDataFor(105), 1)
+check("fillLine réel : station Forge affichée",
+  okFill7 and line7.nameText ~= nil and line7.nameText:find("Forge", 1, true) ~= nil)
+
+-- station inconnue : rien d'ajouté, le nom reste le lien seul
+local line8 = makeLine()
+local okFill8 = pcall(T.fillLine, line8, curDataFor(102), 1)
+check("fillLine réel : station inconnue, nom sans parenthèses",
+  okFill8 and line8.nameText ~= nil and line8.nameText:find("%(", 1, false) == nil)
+check("fillLine réel : station inconnue, texte exact = lien seul",
+  okFill8 and line8.nameText
+    == "|H0:item:102:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h")
+
+-- favori : le préfixe "* " reste avant le lien + station
+FurC.IsFavoriteById = function(itemId) return itemId == 101 end
+local line9 = makeLine()
+local okFill9 = pcall(T.fillLine, line9, curDataFor(101), 1)
+check("fillLine réel : favori * + lien + station (texte exact)",
+  okFill9 and line9.nameText
+    == "* |H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h (Bois de charpenterie)")
+FurC.IsFavoriteById = function(itemId) return false end
+
+-- résidu de station : même ligne réutilisée station connue puis station inconnue
+local line10 = makeLine()
+pcall(T.fillLine, line10, curDataFor(101), 1) -- station connue
+pcall(T.fillLine, line10, curDataFor(102), 1) -- réutilisée, station inconnue
+check("fillLine réel : ligne réutilisée, pas de station résiduelle",
+  line10.nameText ~= nil and line10.nameText:find("Bois", 1, true) == nil)
+
+-- ------------------------------------- PrintCraftingStation réel (exécuté)
+-- On extrait la VRAIE FurC.PrintCraftingStation de Chat.lua et on l'exécute
+-- avec les dépendances simulées (query.GetCraftingSkillType, GetCraftingSkillName,
+-- zo_strformat). Le helper corrigé doit retourner "" pour un type invalide
+-- (0 est truthy en Lua) ou un nom vide — pas des parenthèses vides " ()".
+local chatSrc = io.open("Chat.lua", "r"):read("*a")
+local blockStation, errStation = extractBlock(chatSrc, "^function FurC%.PrintCraftingStation%(")
+check("extrait : PrintCraftingStation trouvé", blockStation ~= nil)
+
+if blockStation then
+  -- dépendances réelles du helper : query (locale de Chat.lua = FurC.DBQuery),
+  -- GetCraftingSkillName (native), sFormat (locale = zo_strformat)
+  local stationTests = {
+    -- { nom du cas, craftingType retourné, GetCraftingSkillName(type) -> nom, attendu }
+    { "type valide (bois)", 5, "Bois de charpenterie", " (Bois de charpenterie)" },
+    { "type 0 (invalide, truthy)", 0, "", "" },
+    { "type nil", nil, nil, "" },
+    { "type valide mais nom vide", 5, "", "" },
+    { "type valide mais nom nil", 5, nil, "" },
+    { "type négatif", -1, "", "" },
+    { "type string (invalide)", "5", nil, "" },
+  }
+  for _, case in ipairs(stationTests) do
+    local caseName, caseType, caseNameReturned, expected = case[1], case[2], case[3], case[4]
+
+    -- stub des dépendances pour ce cas
+    FurC.DBQuery = {
+      GetCraftingSkillType = function(itemId, recipeArray)
+        return caseType
+      end,
+    }
+    GetCraftingSkillName = function(craftingType)
+      return caseNameReturned
+    end
+    zo_strformat = function(fmt, ...)
+      -- sFormat(" (<<1>>)", name) : remplacer <<1>> par le premier arg
+      return (fmt:gsub("<<1>>", tostring((...))))
+    end
+
+    -- charger et exécuter le VRAI helper extrait (le bloc référence `query`
+    -- et `sFormat` comme locales de Chat.lua : on patche textuellement)
+    local blockStationPatched = blockStation
+      :gsub("query%.GetCraftingSkillType", "FurC.DBQuery.GetCraftingSkillType")
+      :gsub("sFormat%(", "zo_strformat(")
+    local stationFn, stationErr = loadstring(blockStationPatched, "PrintCraftingStation")
+    check("PrintCraftingStation extrait : charge (" .. caseName .. ")", stationFn ~= nil)
+    if stationFn then
+      setfenv(stationFn, _G)
+      -- le bloc DÉFINIT FurC.PrintCraftingStation ; on l'exécute ensuite.
+      local okDefine, errDefine = pcall(stationFn)
+      check("PrintCraftingStation : définition sans erreur (" .. caseName .. ")", okDefine)
+      if okDefine then
+        local okStation, result = pcall(FurC.PrintCraftingStation, 101, { blueprint = 0 })
+        check("PrintCraftingStation réel : exécution (" .. caseName .. ")", okStation)
+        check("PrintCraftingStation réel : résultat attendu (" .. caseName .. ")",
+          result == expected)
+        if result ~= expected then
+          print("  attendu " .. string.format("%q", expected)
+            .. ", obtenu " .. string.format("%q", tostring(result)))
+        end
+      else
+        print("  ERREUR définition : " .. tostring(errDefine))
+      end
+    end
+  end
+
+  -- vérifier textuellement que le helper a la garde numérique explicite
+  check("PrintCraftingStation : garde numérique <= 0 (textuel)",
+    blockStation:find("craftingType <= 0", 1, true) ~= nil)
+  check("PrintCraftingStation : garde nom vide (textuel)",
+    blockStation:find('stationName == ""', 1, true) ~= nil)
+end
+
 -- ------------------------------------------------------- tri par défaut réel
 -- le bloc GuiXmlBridge.lua extrait définit sortBy/sortDirection LOCALEMENT au
 -- chunk ; GetSortParams les expose. On teste via les fonctions exposées.
@@ -458,23 +584,28 @@ if blockInitGui then
   }
 
   -- exécuter la VRAIE InitGui extraite
-  -- (Note : on appelle d'abord T.UpdateSortButtons() directement pour
-  -- vérifier le mécanisme (la fonction pose bien la texture active sur MMAvg
-  -- et neutre sur Name), puis on exécute InitGui qui appelle
-  -- FurC.UpdateSortButtons() — le test vérifie que la texture reste correcte.)
-  T.UpdateSortButtons()
-  check("UpdateSortButtons direct : texture MMAvg active (sortup)",
-    buttonTextures["FurCGui_Header_SortBar_MMAvg_Button"]
-      == "esoui/art/miscellaneous/list_sortheader_icon_sortup.dds")
-  check("UpdateSortButtons direct : texture Name neutre",
-    buttonTextures["FurCGui_Header_SortBar_Name_Button"]
-      == "esoui/art/miscellaneous/list_sortheader_icon_neutral.dds")
+  -- Le chunk DÉFINIT FurC.InitGui (il ne l'exécute pas) ; on appelle ensuite
+  -- FurC.InitGui() pour exécuter son corps réel, qui doit appeler
+  -- FurC.UpdateSortButtons() et poser la texture active sur MMAvg. Aucun
+  -- appel direct préalable à UpdateSortButtons : les textures doivent être
+  -- vides avant l'appel, sinon le test ne prouve rien.
+  check("InitGui : textures vides avant exécution",
+    buttonTextures["FurCGui_Header_SortBar_MMAvg_Button"] == nil)
 
   local initGuiFn, initErr = loadstring(blockInitGui, "InitGui")
   check("InitGui extrait : charge", initGuiFn ~= nil)
   if initGuiFn then
     setfenv(initGuiFn, _G)
-    local okInit, errInit = pcall(initGuiFn)
+    local okDefine, errDefine = pcall(initGuiFn) -- définit FurC.InitGui
+    check("InitGui : définition sans erreur", okDefine)
+    if not okDefine then print("  ERREUR définition : " .. tostring(errDefine)) end
+
+    -- les textures doivent être encore vides : le corps n'a pas encore tourné
+    check("InitGui : textures vides avant appel du corps",
+      buttonTextures["FurCGui_Header_SortBar_MMAvg_Button"] == nil)
+
+    -- exécuter le corps réel de FurC.InitGui
+    local okInit, errInit = pcall(FurC.InitGui)
     check("InitGui réel : exécution sans erreur", okInit)
     if not okInit then print("  ERREUR InitGui : " .. tostring(errInit)) end
     check("InitGui réel : texture MMAvg active posée (sortup)",
@@ -482,6 +613,9 @@ if blockInitGui then
         == "esoui/art/miscellaneous/list_sortheader_icon_sortup.dds")
     check("InitGui réel : texture Name neutre (pas active)",
       buttonTextures["FurCGui_Header_SortBar_Name_Button"]
+        == "esoui/art/miscellaneous/list_sortheader_icon_neutral.dds")
+    check("InitGui réel : CraftCost neutre (pas actif)",
+      buttonTextures["FurCGui_Header_SortBar_CraftCost_Button"]
         == "esoui/art/miscellaneous/list_sortheader_icon_neutral.dds")
   end
 end

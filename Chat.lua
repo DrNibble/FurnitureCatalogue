@@ -34,10 +34,18 @@ end
 
 function FurC.PrintCraftingStation(itemId, recipeArray)
   local craftingType = query.GetCraftingSkillType(itemId, recipeArray)
-  if not craftingType or not GetCraftingSkillName(craftingType) then
+  -- CRAFTING_TYPE_INVALID (0) is truthy in Lua: an explicit numeric guard is
+  -- needed, otherwise an unresolved station could render as empty " ()"
+  -- parentheses (GetCraftingSkillName's result for an invalid type is not
+  -- guaranteed to be nil/empty by the client).
+  if type(craftingType) ~= "number" or craftingType <= 0 then
     return ""
   end
-  return sFormat(" (<<1>>)", GetCraftingSkillName(craftingType))
+  local stationName = GetCraftingSkillName(craftingType)
+  if type(stationName) ~= "string" or stationName == "" then
+    return ""
+  end
+  return sFormat(" (<<1>>)", stationName)
 end
 
 function FurC.ToChat(output, refresh)

@@ -1,3 +1,21 @@
+8.0.4 (2026-10-13)
+- la station de fabrication (bois de charpenterie, forge, cuisine, ...) est affichée
+  entre parenthèses à la fin du nom de la recette sur chaque ligne de la liste
+  (ex. "[Nom] (Bois de charpenterie)"). La station est résolue via le helper existant
+  FurC.PrintCraftingStation (Chat.lua, déjà utilisé par le tooltip) : lien de
+  l'item résultat, plan de la recette, ou indices de recette accordée. Le favori "* "
+  et le lien cliquable sont conservés ; si la station ne peut pas être résolue, le nom
+  reste le lien seul.
+- garde ajoutée dans FurC.PrintCraftingStation : un type de craft invalide (0, truthy en
+  Lua) ou un nom vide retourne "" — évite d'afficher des parenthèses vides " ()".
+  Correction du test InitGui du harnais (le chunk extrait définit la fonction ; il faut
+  l'appeler ensuite — l'appel direct préalable à UpdateSortButtons rendait les
+  assertions vertes artificiellement).
+- non testé dans ESO (vérification hors jeu : compilation Lua 5.1 + harnais simulé 100
+  assertions exécutant les blocs réellement extraits de Gui.lua/GuiXmlBridge.lua/Chat.lua
+  (fillLine, PrintCraftingStation, ensureSortedIndex, updateScrollDataLinesData, InitGui,
+  UpdateSortButtons, GuiOnSort), test/unit_mm_sale_visibility.lua)
+
 8.0.3 (2026-10-13)
 - le prix de vente n'est affiché (et trié) que s'il est strictement supérieur au coût de
   fabrication (MM itemCraftPrice) ; une vente inférieure ou égale au coût, ou un coût

@@ -289,7 +289,16 @@ local function updateLineVisibility()
       curLine.icon:SetTexture(GetItemLinkIcon(curData.itemLink))
       curLine.icon:SetAlpha(1)
       local text = string.gsub(curData.itemLink, "H1", "H0")
-      curLine.text:SetText(((FurC.IsFavoriteById(curData.itemId) and "* ") or "") .. text)
+      -- Append the crafting station in parentheses after the recipe name
+      -- (e.g. "[Nom] (Bois de charpenterie)"). FurC.PrintCraftingStation
+      -- (Chat.lua) returns " (Station)" — leading space included — or ""
+      -- when the station cannot be resolved (no recipe, unknown type). It
+      -- resolves via the DB entry (result link, blueprint, or recipe indices).
+      local stationText = ""
+      if type(FurC.PrintCraftingStation) == "function" then
+        stationText = FurC.PrintCraftingStation(curData.itemId, curData) or ""
+      end
+      curLine.text:SetText(((FurC.IsFavoriteById(curData.itemId) and "* ") or "") .. text .. stationText)
       local mats = sourceFormat.FormatListText(curData.itemId, curData, listOpts, selectedTypes)
       curLine.mats:SetText(mats)
       fitMats(curLine)

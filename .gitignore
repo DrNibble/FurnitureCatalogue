@@ -26,3 +26,4 @@ btm/*
 
 .dist/
 .env
+/test/

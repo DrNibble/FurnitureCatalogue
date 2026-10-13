@@ -1,13 +1,16 @@
 8.0.4 (2026-10-13)
 - la station de fabrication (bois de charpenterie, forge, cuisine, ...) est affichée
-  entre parenthèses à la fin du nom de la recette sur chaque ligne de la liste
-  (ex. "[Nom] (Bois de charpenterie)"). La station est résolue via le helper existant
-  FurC.PrintCraftingStation (Chat.lua, déjà utilisé par le tooltip) : lien de
-  l'item résultat, plan de la recette, ou indices de recette accordée. Le favori "* "
-  et le lien cliquable sont conservés ; si la station ne peut pas être résolue, le nom
-  reste le lien seul.
-- garde ajoutée dans FurC.PrintCraftingStation : un type de craft invalide (0, truthy en
-  Lua) ou un nom vide retourne "" — évite d'afficher des parenthèses vides " ()".
+  entre parenthèses à côté du nom de la recette sur chaque ligne de la liste
+  (ex. "[Nom] (Bois de charpenterie)"). Elle est rendue dans un Label Station séparé
+  ajouté aux deux templates de ligne (FurC_SlotTemplate et FurC_SlotTemplateTiny),
+  ancré à droite du nom : le nom garde son propre ellipsis et la station reste
+  toujours entièrement visible (une troncature du nom ne masque pas la station).
+  La station est résolue via le helper existant FurC.PrintCraftingStation (Chat.lua,
+  déjà utilisé par le tooltip) : lien de l'item résultat, plan de la recette, ou
+  indices de recette accordée. Le favori "* " et le lien cliquable du nom sont
+  conservés ; si la station ne peut pas être résolue, le Label Station reste vide.
+- garde ajoutée dans FurC.PrintCraftingStation : un type de craft invalide (0, truthy
+  en Lua) ou un nom vide retourne "" — évite d'afficher des parenthèses vides " ()".
   Correction du test InitGui du harnais (le chunk extrait définit la fonction ; il faut
   l'appeler ensuite — l'appel direct préalable à UpdateSortButtons rendait les
   assertions vertes artificiellement).

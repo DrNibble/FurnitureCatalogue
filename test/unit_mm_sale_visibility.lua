@@ -273,12 +273,14 @@ local function newFakeLine()
     itemId = 0,
     blueprint = 0,
     nameText = nil, matsText = nil, craftCostText = nil, mmAvgText = nil,
+    stationText = nil,
   }
-  -- sous-controls (icon, text, mats, craftCost, mmAvg) : des tables avec
-  -- SetTexture/SetAlpha/SetText stubés. fillLine fait curLine.icon:SetTexture
+  -- sous-controls (icon, text, station, mats, craftCost, mmAvg) : des tables
+  -- avec SetTexture/SetAlpha/SetText stubés. fillLine fait curLine.icon:SetTexture
   -- (GetItemLinkIcon est un global ESO, stubé ci-dessous).
   line.icon = { SetTexture = function(self, v) end, SetAlpha = function(self, v) end }
   line.text = { SetText = function(self, v) line.nameText = v end }
+  line.station = { SetText = function(self, v) line.stationText = v end }
   line.mats = { SetText = function(self, v) line.matsText = v end }
   line.craftCost = { SetText = function(self, v) line.craftCostText = v end }
   line.mmAvg = { SetText = function(self, v) line.mmAvgText = v end }
@@ -302,6 +304,7 @@ local lineMetatable = {
             if sk == "SetText" then
               return function(ss, v)
                 if name == "Name" then t.nameText = v
+                elseif name == "Station" then t.stationText = v
                 elseif name == "Mats" then t.matsText = v
                 elseif name == "CraftCost" then t.craftCostText = v
                 elseif name == "MMAvg" then t.mmAvgText = v
@@ -399,34 +402,33 @@ local line6 = makeLine()
 local okFill6 = pcall(T.fillLine, line6, curDataFor(101), 1)
 check("fillLine réel : exécution sans erreur (station)", okFill6)
 check("fillLine réel : PrintCraftingStation appelé", #stationCalls == 1 and stationCalls[1].itemId == 101)
--- égalité EXACTE du texte (pas seulement des sous-chaînes) : lien intact,
--- suffixe après le lien, pas de favori.
-check("fillLine réel : texte exact = lien H0 + station",
-  line6.nameText == "|H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h (Bois de charpenterie)")
-check("fillLine réel : nom contient toujours le lien (H0)",
-  line6.nameText ~= nil and line6.nameText:find("|H0:item:101", 1, true) ~= nil)
+-- le nom reste le lien seul (favori absent) ; la station va dans le Label
+-- Station séparé (toujours visible, pas tronquée par l'ellipsis du nom).
+check("fillLine réel : nom = lien H0 seul (texte exact)",
+  line6.nameText == "|H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h")
+check("fillLine réel : station posée dans le Label Station",
+  line6.stationText == " (Bois de charpenterie)")
 
 local line7 = makeLine()
 local okFill7 = pcall(T.fillLine, line7, curDataFor(105), 1)
-check("fillLine réel : station Forge affichée",
-  okFill7 and line7.nameText ~= nil and line7.nameText:find("Forge", 1, true) ~= nil)
+check("fillLine réel : station Forge posée",
+  okFill7 and line7.stationText == " (Forge)")
 
--- station inconnue : rien d'ajouté, le nom reste le lien seul
+-- station inconnue : Label Station vide, nom = lien seul
 local line8 = makeLine()
 local okFill8 = pcall(T.fillLine, line8, curDataFor(102), 1)
-check("fillLine réel : station inconnue, nom sans parenthèses",
-  okFill8 and line8.nameText ~= nil and line8.nameText:find("%(", 1, false) == nil)
-check("fillLine réel : station inconnue, texte exact = lien seul",
-  okFill8 and line8.nameText
-    == "|H0:item:102:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h")
+check("fillLine réel : station inconnue, Label Station vide (texte exact)",
+  okFill8 and line8.stationText == ""
+    and line8.nameText == "|H0:item:102:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h")
 
--- favori : le préfixe "* " reste avant le lien + station
+-- favori : le préfixe "* " reste devant le lien ; station dans son Label
 FurC.IsFavoriteById = function(itemId) return itemId == 101 end
 local line9 = makeLine()
 local okFill9 = pcall(T.fillLine, line9, curDataFor(101), 1)
-check("fillLine réel : favori * + lien + station (texte exact)",
+check("fillLine réel : favori * + lien, station séparée (texte exact)",
   okFill9 and line9.nameText
-    == "* |H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h (Bois de charpenterie)")
+    == "* |H0:item:101:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h"
+    and line9.stationText == " (Bois de charpenterie)")
 FurC.IsFavoriteById = function(itemId) return false end
 
 -- résidu de station : même ligne réutilisée station connue puis station inconnue

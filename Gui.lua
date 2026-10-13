@@ -289,16 +289,21 @@ local function updateLineVisibility()
       curLine.icon:SetTexture(GetItemLinkIcon(curData.itemLink))
       curLine.icon:SetAlpha(1)
       local text = string.gsub(curData.itemLink, "H1", "H0")
-      -- Append the crafting station in parentheses after the recipe name
-      -- (e.g. "[Nom] (Bois de charpenterie)"). FurC.PrintCraftingStation
-      -- (Chat.lua) returns " (Station)" — leading space included — or ""
-      -- when the station cannot be resolved (no recipe, unknown type). It
-      -- resolves via the DB entry (result link, blueprint, or recipe indices).
+      -- The crafting station (bois de charpenterie, forge, ...) is rendered in a
+      -- separate Station label anchored right of Name: the recipe name keeps its
+      -- own ellipsis-truncated space and the station is always fully visible.
+      -- FurC.PrintCraftingStation (Chat.lua) returns " (Station)" — leading
+      -- space included — or "" when the station cannot be resolved (no recipe,
+      -- unknown type). It resolves via the DB entry (result link, blueprint, or
+      -- granted recipe indices).
       local stationText = ""
       if type(FurC.PrintCraftingStation) == "function" then
         stationText = FurC.PrintCraftingStation(curData.itemId, curData) or ""
       end
-      curLine.text:SetText(((FurC.IsFavoriteById(curData.itemId) and "* ") or "") .. text .. stationText)
+      curLine.text:SetText(((FurC.IsFavoriteById(curData.itemId) and "* ") or "") .. text)
+      if curLine.station then
+        curLine.station:SetText(stationText)
+      end
       local mats = sourceFormat.FormatListText(curData.itemId, curData, listOpts, selectedTypes)
       curLine.mats:SetText(mats)
       fitMats(curLine)
@@ -628,6 +633,7 @@ local function createGui()
 
       line.icon = line:GetNamedChild("Button"):GetNamedChild("Icon")
       line.text = line:GetNamedChild("Name")
+      line.station = line:GetNamedChild("Station")
       line.mats = line:GetNamedChild("Mats")
       line.craftCost = line:GetNamedChild("CraftCost")
       line.mmAvg = line:GetNamedChild("MMAvg")

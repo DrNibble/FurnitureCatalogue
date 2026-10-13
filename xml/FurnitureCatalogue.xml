@@ -341,8 +341,13 @@
         </Button>
         <Label name="$(parent)Name" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
           verticalAlignment="CENTER" maxLineCount="1">
-          <Dimensions y="70" x="280" />
+          <Dimensions y="70" x="180" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" offsetX="3" />
+        </Label>
+        <Label name="$(parent)Station" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
+          verticalAlignment="CENTER" maxLineCount="1">
+          <Dimensions y="70" x="100" />
+          <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="2" />
         </Label>
         <Label name="$(parent)MMAvg" font="ZoFontGameShadow" wrapMode="ELLIPSIS"
           verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
@@ -357,7 +362,7 @@
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="2">
           <Dimensions y="70" />
-          <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="21" />
+          <Anchor point="LEFT" relativeTo="$(parent)Station" relativePoint="RIGHT" offsetX="19" />
           <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>
       </Controls>
@@ -387,8 +392,13 @@
         </Button>
         <Label name="$(parent)Name" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="1">
-          <Dimensions y="60" x="230" />
+          <Dimensions y="60" x="140" />
           <Anchor point="LEFT" relativeTo="$(parent)Button" relativePoint="RIGHT" />
+        </Label>
+        <Label name="$(parent)Station" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
+          maxLineCount="1">
+          <Dimensions y="60" x="90" />
+          <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="2" />
         </Label>
         <Label name="$(parent)MMAvg" font="ZoFontGame" wrapMode="ELLIPSIS"
           verticalAlignment="CENTER" horizontalAlignment="RIGHT" maxLineCount="1">
@@ -403,7 +413,7 @@
         <Label name="$(parent)Mats" font="ZoFontGame" wrapMode="ELLIPSIS" verticalAlignment="CENTER"
           maxLineCount="2">
           <Dimensions y="60" />
-          <Anchor point="LEFT" relativeTo="$(parent)Name" relativePoint="RIGHT" offsetX="18" />
+          <Anchor point="LEFT" relativeTo="$(parent)Station" relativePoint="RIGHT" offsetX="16" />
           <Anchor point="RIGHT" relativeTo="$(parent)CraftCost" relativePoint="LEFT" offsetX="-5" />
         </Label>
       </Controls>

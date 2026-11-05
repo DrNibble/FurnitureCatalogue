@@ -44,6 +44,8 @@ local gsub = string.gsub
 local match = string.match
 local getEntry = LFC.API.GetEntry
 local getItemLink = LFC.API.GetItemLink
+local listIdFromSource = FurC.ListIdFromSource
+local isInListById = FurC.IsInListById
 
 -- Build item link lazily (only if required and not already cached)
 local function ensureItemLink()
@@ -214,6 +216,11 @@ local function matchesSource(candidate)
   if src.FAVE == candidate then
     return FurC.IsFavoriteById(itemId)
   end
+  -- a custom list holds what was put on it, nothing rolls up into it or out of it
+  local listId = listIdFromSource(candidate)
+  if listId then
+    return isInListById(listId, itemId)
+  end  
   if src.CRAFTING_KNOWN == candidate or src.CRAFTING_UNKNOWN == candidate then
     if not hasSource(src.CRAFTING) then
       return false

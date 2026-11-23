@@ -85,14 +85,29 @@ Taneth("FurC:Unit", function()
 
       -- "only a rumour" is the whole source set being that one bit, which is what the filter tests
       local onlyRumour = LFC.Internal.Build.SourceMask({ [src.RUMOUR] = true })
-      local rumours = 0
+      local ignored = withSource(src.IGNORED)
+      local rumours, missing, extra = 0, {}, {}
       for _, itemId in ipairs(LFC.API.GetItemIds()) do
-        if LFC.Internal.Query.Find(itemId).sources == onlyRumour then
-          rumours = rumours + 1
+        local onlyARumour = LFC.Internal.Query.Find(itemId).sources == onlyRumour
+        rumours = rumours + (onlyARumour and 1 or 0)
+        -- compared per id, not by count: the live client drops ids it no longer knows, and the failure should name them
+        local expected = not onlyARumour and not ignored[itemId] and clientResolves(itemId)
+        if expected ~= (all[itemId] == true) then
+          local list = expected and missing or extra
+          list[#list + 1] = itemId
         end
       end
       assert.is_true(rumours > 0, "no item is only a rumour, so the exclusion is untested")
-      assert.equals(LFC.API.GetEntryCount() - rumours - count(withSource(src.IGNORED)), count(all))
+      assert.equals(
+        0,
+        #missing,
+        string.format("All hides %d item(s) it should show, e.g. %s", #missing, tostring(missing[1]))
+      )
+      assert.equals(
+        0,
+        #extra,
+        string.format("All shows %d item(s) it should hide, e.g. %s", #extra, tostring(extra[1]))
+      )
     end)
 
     it("hides ignored items by default but permits an explicit source query", function()
@@ -102,6 +117,32 @@ Taneth("FurC:Unit", function()
       for _, id in ipairs(FurC.GetSourceOrder()) do
         assert.is_false(id == src.IGNORED, "FC must not offer an ignored source tab")
       end
+    end)
+
+    it("a rumour on Favorites or a list shows there, as a selection and as a right-click pick", function()
+      FurC.EnsureDB(true)
+      local rumourId = next(keptBy(src.RUMOUR))
+      assert.is_not_nil(rumourId, "the Rumour tab keeps nothing, so there is no rumour to put on a list")
+      local settings = FurC.settings
+      local savedFaves, savedLists = settings.favorites, settings.customLists
+      settings.favorites = { [rumourId] = true }
+      local list = { name = "t", items = { [rumourId] = true } }
+      settings.customLists = { nextId = 2, order = { 1 }, byId = { [1] = list } }
+      local listSource = FurC.ListSourceId(1)
+      local ok, err = pcall(function()
+        assert.is_true(keptBy(src.FAVE)[rumourId], "a favourite rumour is missing from Favorites")
+        assert.is_true(keptBy(listSource)[rumourId], "a rumour on a list is missing from that list")
+        FurC.AdditiveSources[listSource] = true
+        local picked = keptBy(src.EDITOR)
+        FurC.AdditiveSources[listSource] = nil
+        assert.is_true(picked[rumourId], "a list picked by right-click drops its rumour")
+        settings.favorites = {}
+        assert.is_nil(keptBy(src.FAVE)[rumourId])
+        assert.is_nil(keptBy(src.NONE)[rumourId])
+      end)
+      FurC.AdditiveSources[listSource] = nil
+      settings.favorites, settings.customLists = savedFaves, savedLists
+      assert.equals("ok", (ok and "ok") or tostring(err))
     end)
 
     it("Housing Editor keeps exactly the items the editor sells", function()

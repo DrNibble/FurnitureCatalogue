@@ -38,6 +38,12 @@ end
 function GetAchievementId()
   return 11
 end
+function GetFirstAchievementInLine()
+  return 0
+end
+function GetNextAchievementInLine()
+  return 0
+end
 function GetAchievementInfo()
   return "|c00ff00élan^m|r"
 end
@@ -85,6 +91,9 @@ end
 dofile("FurnitureCatalogue_DevUtility/Public.lua")
 assert(FurCDev.GetAchievementId("élan^m") == 11, "formatted names must still resolve from vendor requirements")
 assert(FurCDev.GetAchievementId("ÉLAN") == 11)
+FurCDev.Achievements[14] = "Élan"
+assert(FurCDev.GetAchievementId("Élan") == 0, "a name two achievements share resolves to no id")
+FurCDev.Achievements[14] = nil
 assert(FurCDev.FindAchievement("é")[1] == "11: Élan")
 assert(FurCDev.FindQuest("HÖHLE")[12] == "Höhle")
 assert(FurCDev.FindZone("森")[1] == "森")
@@ -94,6 +103,9 @@ local header, readyCallback
 local currentState, count = "building", 0
 local callbacks = {}
 LibFurnitureCatalogue.API = {
+  GetFurnitureCategories = function()
+    return { [2] = { name = "дом^m", parent = 0, order = 2 }, [135] = { name = "", parent = 2, order = 1 } }
+  end,
   Events = { SCAN_STARTED = "start", SCAN_COMPLETE = "complete", SCAN_FAILED = "failed" },
   IsReady = function()
     return currentState == "ready"
@@ -151,15 +163,45 @@ FurCDev.textbox = {
 }
 FurCDev.control = {
   SetHidden = function() end,
+  BringWindowToTop = function() end,
   IsHidden = function()
     return true
   end,
 }
 FurCDev.DumpNames("quests")
 assert(shown:find("quests = {", 1, true) and shown:find('[12] = "Höhle",', 1, true), shown)
+FurC.EnsureDB = function() end
+FurC.DB = { [120000] = { blueprint = 130000 } }
+FurC.Utils = {
+  GetItemLink = function(id)
+    return "link:" .. id
+  end,
+  GetItemName = function(id)
+    return id == 130000 and "Skizze: Stuhl" or "Stuhl"
+  end,
+}
+FURNITURE_THEME_TYPE_ITERATION_BEGIN, FURNITURE_THEME_TYPE_ITERATION_END = 0, 2
+function GetItemLinkRecipeCraftingSkillType(link)
+  return link == "link:130000" and 6 or 0
+end
+local realGetString = GetString
+function GetString(prefix, index)
+  if prefix == "SI_TRADESKILLTYPE" then
+    return index == 6 and "дом^m" or nil
+  end
+  if prefix == "SI_FURNITURETHEMETYPE" then
+    return ({ [0] = "森^n", [1] = "", [2] = "дом^m" })[index]
+  end
+  return realGetString and realGetString(prefix, index) or ""
+end
 FurCDev.DumpAllNames(true)
 local names = FurCDev_SavedVariables.names
 assert(names.format == "furniture-names-v1" and names.locale == "en")
 assert(names.houses[13] == "Дом" and names.quests[12] == "Höhle")
 assert(names.achievements[11] == "Élan" and names.zones[1] == "森")
+assert(names.skills[6] == "Дом" and names.skills[1] == nil)
+assert(names.crafts[120000] == 6 and NonContiguousCount(names.crafts) == 1)
+assert(names.categories[2] == "Дом" and names.categories[135] == nil)
+assert(names.themes[0] == "森" and names.themes[1] == nil and names.themes[2] == "Дом")
+assert(names.items[120000] == "Stuhl" and names.items[130000] == "Skizze: Stuhl")
 print("Dashboard checks passed: formatted names, names dump and lifecycle-driven header.")

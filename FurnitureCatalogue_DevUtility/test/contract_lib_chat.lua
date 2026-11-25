@@ -79,11 +79,32 @@ Taneth("FurC:Lib", function()
     end)
 
     it("names the item and its sources", function()
-      local lines = run(tostring(DS.dbItem))
+      -- dbItem is whatever the DB yields first and may be crafting-only (which lists mats instead of sources).
+      -- A luxury item always has a source line to print
+      local lines = run(tostring(DS.luxItemInDB))
       assert.is_true(#lines >= 2)
       -- a hit reads "<id>: <link>", so the id is readable and the link clickable
-      assert.is_not_nil(lines[1]:find(DS.dbItem .. ": ", 1, true))
+      assert.is_not_nil(lines[1]:find(DS.luxItemInDB .. ": ", 1, true))
       assert.is_not_nil(lines[1]:find("|H", 1, true))
+    end)
+
+    -- an id the catalogue holds but the client cannot name: deleted from the game, or not in this client yet
+    it("says when the game client does not know a catalogued item", function()
+      local note = GetString(SI_FURC_CHAT_NOT_IN_CLIENT)
+      local id = DS.luxItemInDB
+      assert.is_nil(run(tostring(id))[1]:find(note, 1, true))
+      local realName = GLOBALS.GetItemLinkName
+      GLOBALS.GetItemLinkName = function(link)
+        return GetItemLinkItemId(link) == id and "" or realName(link)
+      end
+      local ok, plain, raw = pcall(function()
+        return run(tostring(id)), run("raw " .. id)
+      end)
+      GLOBALS.GetItemLinkName = realName
+      assert.is_true(ok, plain)
+      for _, lines in ipairs({ plain, raw }) do
+        assert.is_not_nil(lines[1]:find(id .. " (" .. note .. ")", 1, true), lines[1])
+      end
     end)
 
     it("reports database status without needing an item", function()

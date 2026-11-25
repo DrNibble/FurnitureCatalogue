@@ -20,7 +20,8 @@ FurCDev = {
       output = text
     end,
   },
-  control = { SetHidden = function() end },
+  control = { SetHidden = function() end, BringWindowToTop = function() end },
+  ShowWindow = function() end, -- GUI.lua's, loaded further down
   selectAllOutput = function() end,
   SelectTab = function() end,
   SetScanSummary = function(text)
@@ -122,9 +123,9 @@ local count = 0
 for _ in output:gmatch('"format"') do
   count = count + 1
 end
-assert(count == 5, "runtime-only items, stations and new recipes for known furnishings must be included")
+assert(count == 4, "runtime-only items and new recipes for known furnishings must be included")
 assert(output:find('"id":101', 1, true))
-assert(output:find('"id":105', 1, true))
+assert(not output:find('"id":105', 1, true), "a furnishing by item type that cannot be placed is not written")
 assert(not output:find('"blueprint":108', 1, true), "bundled rumour blueprint must be skipped")
 assert(not output:find('"blueprint":107', 1, true), "bundled blueprint must be skipped")
 assert(output:find('"blueprint":103', 1, true) and output:find('"blueprint":104', 1, true))
@@ -206,8 +207,8 @@ end
 dofile("FurnitureCatalogue_DevUtility/GUI.lua")
 FurCDevControl_HandleInventoryContextMenu({})
 table.remove(pending, 1)()
-assert(menu["Add JSONL to textbox"], "missing item must have a discovery action")
-menu["Add JSONL to textbox"]()
+assert(menu["Add item to textbox"], "missing item must have a discovery action")
+menu["Add item to textbox"]()
 assert(output:find('"id":101', 1, true), "context action must produce discovery JSONL")
 -- A catalogued item and a blueprint are added too, after what is already there, and only once.
 local before = output
@@ -216,16 +217,41 @@ GetItemLink = function()
 end
 FurCDevControl_HandleInventoryContextMenu({})
 table.remove(pending, 1)()
-menu["Add JSONL to textbox"]()
+menu["Add item to textbox"]()
 assert(
   output:sub(1, #before) == before and output:find('"record":{"id":100,"source"', 1, true),
   "known item must append"
 )
-menu["Add JSONL to textbox"]()
+menu["Add item to textbox"]()
 local _, lines = output:gsub("\n", "")
 assert(lines == 2, "the same item must not be added twice")
 FurCDev.AppendDiscovery(106)
 assert(output:find('"record":{"id":100,"blueprint":106', 1, true), "a blueprint adds its furnishing with the blueprint")
+-- Only a furnishing is ever written, whatever its name (seen: equipment 101051 written as a rumour)
+assert(FurCDev.AppendDiscovery(150) == false and FurCDev.DiscoveryLine(150) == nil, "equipment must not be written")
+-- A trader line: the discovery line plus one top-level offer, keyed by the library's currency vocabulary
+CURT_MONEY, CURT_WRIT_VOUCHERS = 1, 4
+local offerLine = FurCDev.DiscoveryLine(100, nil, FurCDev.Offer(0, CURT_WRIT_VOUCHERS, 800, 42))
+assert(offerLine:find('^{"format":"furniture%-discovery%-v1",'))
+assert(
+  offerLine:sub(-#'},"offer":{"achievement":42,"amount":800,"currency":"WRIT_VOUCHERS"}}')
+    == '},"offer":{"achievement":42,"amount":800,"currency":"WRIT_VOUCHERS"}}',
+  "offer must be the last top-level key: " .. offerLine
+)
+assert(offerLine:find('"record":{"id":100,"source"', 1, true), "the record stays as it is")
+local gold = FurCDev.Offer(1500, CURT_MONEY, 0, 0)
+assert(gold.currency == "GOLD" and gold.amount == 1500 and gold.achievement == nil)
+local none, reason = FurCDev.Offer(0, 999, 10)
+assert(none == nil and reason == "currency", "a currency without a key gets no offer, not an invented key")
+assert(FurCDev.Offer(0, nil, 0) == nil, "free entries have no offer")
+assert(
+  FurCDev.GateAchievementName("Benötigt die Errungenschaft „Sieger von Bal Sunnar“.") == "Sieger von Bal Sunnar"
+)
+assert(
+  FurCDev.GateAchievementName("Requires Bal Sunnar Vanquisher Achievement to purchase.") == "Bal Sunnar Vanquisher"
+)
+assert(FurCDev.GateAchievementName("Requires Bal Sunnar Vanquisher to purchase.") == "Bal Sunnar Vanquisher")
+assert(FurCDev.GateAchievementName("Not enough gold") == nil)
 output = before
 
 -- Build and exercise the actual Datamine controls, without chat commands.
@@ -311,7 +337,7 @@ GetItemLinkName = function()
   return string.rep("椅", 4500)
 end
 control("Scan").OnClicked()
-assert(control("Page").text == "Page 1 / 5")
+assert(control("Page").text == "Page 1 / 4") -- one 4500-character line per page
 assert(control("Next").enabled and not control("Previous").enabled)
 local firstPage = output
 control("Next").OnClicked()
@@ -353,14 +379,103 @@ assert(control("Status").text:find("3 discoveries, 1 id", 1, true))
 output = ""
 control("Request").OnClicked()
 assert(control("Status").text:find("Paste the requested item ids", 1, true))
+-- Item list over discovery output must not read its numbers (apiVersion, cat, quality) as ids
+output = FurCDev.DiscoveryLine(100) .. "\n"
+local discoveryOutput = output
+control("Request").OnClicked()
+assert(output == discoveryOutput and control("Status").text:find("holds discovery output", 1, true))
+-- Detect deleted: catalogued ids, blueprints and ignored ids the client has no name for, as a named plain list
+known[130] = { version = 1, blueprint = 131 }
+known[132] = { version = 1, sources = 31 }
+known[133] = { version = 1, sources = 31 }
+furniture[133] = true
+function GetItemLinkName(id)
+  return (furniture[id] or recipes[id] or id == 108) and "Chair" or ""
+end
+control("Missing").OnClicked()
+assert(output == "furniture-missing-ids-v1\n130\n131\n132\n", "missing ids, sorted, under the list name: " .. output)
+assert(control("Status").text:find("3 of 12 catalogued", 1, true), control("Status").text)
+assert(control("Page").text == "Page 1 / 1")
+-- the list is not a request: Item list must not ask the client for the ids it just reported missing
+local missingOutput = output
+control("Request").OnClicked()
+assert(output == missingOutput and control("Status").text:find("not item ids", 1, true))
+-- a blueprint the catalogue dropped from its item is still reported, from the generated data
+LFCGeneratedDatabase = { blueprints = { [134] = 130 } }
+control("Missing").OnClicked()
+assert(output == "furniture-missing-ids-v1\n130\n131\n132\n134\n", "dropped blueprint is reported: " .. output)
+LFCGeneratedDatabase = nil
+control("Missing").OnClicked()
+assert(output == missingOutput)
+function GetItemLinkName()
+  return "Chair"
+end
+control("Missing").OnClicked()
+assert(output == "" and control("Status").text:find("0 of 12 catalogued", 1, true))
+known[130], known[132], known[133], furniture[133] = nil, nil, nil, nil
+local logged
+FurC.Logger = {
+  Info = function(_, fmt, ...)
+    logged = fmt:format(...)
+  end,
+}
+BAG_BACKPACK = 1
+local slots = {}
+for slot = 1, 300 do
+  furniture[1000 + slot] = true
+  slots[slot] = 1000 + slot
+end
+slots[301], slots[302] = 1001, 1002
+function ZO_IterateBagSlots()
+  local slot = 0
+  return function()
+    slot = slot + 1
+    return slots[slot] and slot or nil
+  end
+end
+function GetItemLink(_, slot)
+  return slots[slot]
+end
+function GetItemLinkName(id)
+  return furniture[id] and string.rep("Chair ", 40) or ""
+end
+FurCDev.AddAllFromBag()
+local pageCount = tonumber(control("Page").text:match("Page 1 / (%d+)"))
+assert(pageCount and pageCount > 1, "a full bag must span several pages: " .. tostring(control("Page").text))
+local dumped, seenIds = 0, {}
+for index = 1, pageCount do
+  assert(#output < 24000, "every page fits one copy")
+  for id in output:gmatch('"record":{"id":(%d+)') do
+    assert(not seenIds[id], "furnishing " .. id .. " written twice")
+    seenIds[id] = true
+    dumped = dumped + 1
+  end
+  if index < pageCount then
+    FurCDev.ShowDiscoveryPage(1)
+  end
+end
+assert(dumped == 300, "every furnishing of the bag is on a page: " .. dumped)
+assert(logged:find("300 furnishing(s) in the backpack, " .. pageCount .. " page(s)", 1, true), logged)
+for slot = 1, 300 do
+  furniture[1000 + slot] = nil
+end
 output, GetItemLinkName = saved, savedName
 
 dofile("FurnitureCatalogue_DevUtility/Dump.lua")
 FurCDev.BuildDumpTab()
-assert(widgets["FurCDevControl_Dump_Metadump"] and widgets["FurCDevControl_Dump_ReloadUI"])
+assert(widgets["FurCDevControl_Dump_Metadump"] and widgets["FurCDevControl_Dump_Namesdump"])
 assert(not widgets["FurCDevControl_Dump_Discoveritems"] and not widgets["FurCDevControl_Dump_Verbosedump"])
-FurCDev_SavedVariables = { verbose = "old export" }
+assert(not widgets["FurCDevControl_Dump_Allnamestofile"])
+local reload = widgets["FurCDevControl_Dump_ReloadUI"]
+assert(reload and reload.enabled == false, "nothing to write yet, so no reload")
+FurCDev_SavedVariables = { verbose = "old export", probe = { "kept" } }
 widgets["FurCDevControl_Dump_Metadump"].OnClicked()
+assert(reload.enabled, "a dump waits for the reload that writes it")
+assert(FurCDev_SavedVariables.probe[1] == "kept", "probe results collect across sessions")
+-- a second dump in the same session adds its key instead of starting a new file
+FurCDev_SavedVariables.names = { format = "furniture-names-v1" }
+widgets["FurCDevControl_Dump_Metadump"].OnClicked()
+assert(FurCDev_SavedVariables.names and FurCDev_SavedVariables.meta, "names and meta reach disk with one reload")
 local meta = FurCDev_SavedVariables.meta
 assert(meta.format == "furniture-meta-v1" and meta.locale == "en" and meta.apiVersion == 101051)
 assert(meta.items[200001].blueprint == 200002 and meta.items[200001].name == "Meta chair")

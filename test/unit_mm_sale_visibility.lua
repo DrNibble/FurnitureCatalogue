@@ -433,10 +433,29 @@ FurC.IsFavoriteById = function(itemId) return false end
 
 -- résidu de station : même ligne réutilisée station connue puis station inconnue
 local line10 = makeLine()
-pcall(T.fillLine, line10, curDataFor(101), 1) -- station connue
-pcall(T.fillLine, line10, curDataFor(102), 1) -- réutilisée, station inconnue
+local okFill10 = pcall(T.fillLine, line10, curDataFor(101), 1)
+local hadStation = line10.stationText == " (Bois de charpenterie)"
+local okReuse10 = pcall(T.fillLine, line10, curDataFor(102), 1)
 check("fillLine réel : ligne réutilisée, pas de station résiduelle",
-  line10.nameText ~= nil and line10.nameText:find("Bois", 1, true) == nil)
+  okFill10 and hadStation and okReuse10 and line10.stationText == "")
+
+local line11 = makeLine()
+FurC.showBlueprints = true
+getEntryGlobal = function() return { blueprint = 1101 } end
+local row11 = curDataFor(101)
+row11.blueprint = 1101
+local okFill11 = pcall(T.fillLine, line11, row11, 1)
+check("fillLine réel : le mode plan conserve le lien du plan et les prix du meuble",
+  okFill11 and line11.itemLink == curDataFor(1101).itemLink
+    and line11.mmAvgText == "12 070 (15)" and line11.craftCostText == "5 000"
+    and line11.stationText == " (Bois de charpenterie)")
+FurC.showBlueprints = false
+getEntryGlobal = function() return nil end
+
+local okHide11 = pcall(T.fillLine, line11, nil, 1)
+check("fillLine réel : ligne masquée, lien, station et prix effacés",
+  okHide11 and line11.itemLink == "" and line11.stationText == ""
+    and line11.craftCostText == "" and line11.mmAvgText == "")
 
 -- ------------------------------------- PrintCraftingStation réel (exécuté)
 -- On extrait la VRAIE FurC.PrintCraftingStation de Chat.lua et on l'exécute

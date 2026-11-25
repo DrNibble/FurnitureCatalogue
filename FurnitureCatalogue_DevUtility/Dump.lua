@@ -25,9 +25,19 @@ local function promptReload()
 end
 this.PromptReload = promptReload
 
----Fresh SavedVariables root: one export per file, no leftovers
+local reloadButton
+local clearedThisSession = false
+
+---SavedVariables root for a dump. First dump of a session drops what earlier sessions left, later ones add
 local function savedVars()
-  FurCDev_SavedVariables = {}
+  if not clearedThisSession then
+    clearedThisSession = true
+    local old = FurCDev_SavedVariables
+    FurCDev_SavedVariables = { probe = type(old) == "table" and old.probe or nil }
+  end
+  if reloadButton then
+    reloadButton:SetEnabled(true)
+  end
   return FurCDev_SavedVariables
 end
 
@@ -35,7 +45,7 @@ end
 local function showOutput(text)
   if this.textbox and this.control then
     this.textbox:SetText(text .. "\n")
-    this.control:SetHidden(false)
+    this.ShowWindow()
   else
     d(text)
   end
@@ -171,12 +181,85 @@ local function buildAllZones()
   end
 end
 
+--- [itemId] -> item name in the client language, every catalogued id (blueprints too)
+this.Items = {}
+local function buildItems()
+  FurC.EnsureDB(true)
+  local function add(id)
+    if type(id) == "number" and id > 9999 then
+      local name = FurC.Utils.GetItemName(id)
+      if type(name) == "string" and name ~= "" then
+        this.Items[id] = name
+      end
+    end
+  end
+  for id, row in pairs(FurC.DB or {}) do
+    add(id)
+    add(type(row) == "table" and row.blueprint)
+  end
+end
+
+--- [categoryId] -> furnishing category or subcategory name (one id space), in the client language
+this.Categories = {}
+local function buildCategories()
+  for id, category in pairs(buildTaxonomy()) do
+    local name = this.Internal.FormatName(category.name)
+    if name ~= "" then
+      this.Categories[id] = name
+    end
+  end
+end
+
+--- [themeId] -> furnishing theme (style) name, in the client language
+this.Themes = {}
+local function buildThemes()
+  for id = FURNITURE_THEME_TYPE_ITERATION_BEGIN, FURNITURE_THEME_TYPE_ITERATION_END do
+    local name = this.Internal.FormatName(GetString("SI_FURNITURETHEMETYPE", id))
+    if name ~= "" then
+      this.Themes[id] = name
+    end
+  end
+end
+
+--- [skillId] -> crafting skill name (Blacksmithing, Woodworking, ...), in the client language
+this.Skills = {}
+local function buildSkills()
+  -- the ids are few and not contiguous in every client version; an id without a string gives nothing
+  for id = 1, 16 do
+    local name = this.Internal.FormatName(GetString("SI_TRADESKILLTYPE", id))
+    if name ~= "" then
+      this.Skills[id] = name
+    end
+  end
+end
+
+---[itemId] -> id of the crafting skill that makes it, for every catalogued furnishing with a blueprint
+---@return table<integer, integer>
+local function buildCrafts()
+  FurC.EnsureDB(true)
+  local crafts = {}
+  for id, row in pairs(FurC.DB or {}) do
+    local blueprint = type(row) == "table" and row.blueprint
+    if type(id) == "number" and type(blueprint) == "number" then
+      local skill = GetItemLinkRecipeCraftingSkillType(FurC.Utils.GetItemLink(blueprint))
+      if skill and skill ~= 0 then
+        crafts[id] = skill
+      end
+    end
+  end
+  return crafts
+end
+
 -- builders are looked up when used, so this file does not depend on Internal.lua loading first
 local NAME_KINDS = {
+  { key = "items", label = "Items", source = "Items", build = buildItems },
   { key = "houses", label = "Houses", source = "Houses", build = "BuildHouseTable" },
   { key = "quests", label = "Quests", source = "Quests", build = "BuildQuestTable" },
   { key = "achievements", label = "Achievements", source = "Achievements", build = "BuildAchievementTable" },
   { key = "zones", label = "Zones", source = "Zones", build = buildAllZones },
+  { key = "categories", label = "Categories", source = "Categories", build = buildCategories },
+  { key = "themes", label = "Themes", source = "Themes", build = buildThemes },
+  { key = "skills", label = "Crafting skills", source = "Skills", build = buildSkills },
 }
 
 ---@return table<integer, string> names a copy, so a later rebuild cannot change a dump
@@ -273,6 +356,9 @@ function this.DumpAllNames(skipReloadPrompt)
     dump[kind.key] = namesOf(kind)
     counts[#counts + 1] = string.format("  %-13s %d", kind.key .. ":", NonContiguousCount(dump[kind.key]))
   end
+  -- not names, but read from the same client in the same run: which skill crafts which furnishing
+  dump.crafts = buildCrafts()
+  counts[#counts + 1] = string.format("  %-13s %d", "crafts:", NonContiguousCount(dump.crafts))
   savedVars().names = dump
   showOutput(
     "FurCDev names dump\n" .. table.concat(counts, "\n") .. "\n\nReload the UI to write SavedVariables to disk."
@@ -286,7 +372,9 @@ end
 -- Dump tab
 -------------------------
 
-local BUTTON_WIDTH = 190
+local BUTTON_WIDTH = 244
+local COLUMN_GAP = 4
+local HALF_WIDTH = (BUTTON_WIDTH - COLUMN_GAP) / 2
 local BUTTON_HEIGHT = 28
 local ROW_GAP = 34
 
@@ -295,11 +383,12 @@ local ROW_GAP = 34
 ---@param label string caption
 ---@param hint string tooltip text
 ---@param onClicked function
-local function addButton(panel, index, label, hint, onClicked)
+---@param column integer? 1 or 2 for a half-width button in that column, nil for a full row
+local function addButton(panel, index, label, hint, onClicked, column)
   local name = "FurCDevControl_Dump_" .. label:gsub("%W", "")
   local button = WINDOW_MANAGER:CreateControlFromVirtual(name, panel, "ZO_DefaultButton")
-  button:SetDimensions(BUTTON_WIDTH, BUTTON_HEIGHT)
-  button:SetAnchor(TOPLEFT, panel, TOPLEFT, 0, (index - 1) * ROW_GAP)
+  button:SetDimensions(column and HALF_WIDTH or BUTTON_WIDTH, BUTTON_HEIGHT)
+  button:SetAnchor(TOPLEFT, panel, TOPLEFT, column == 2 and (HALF_WIDTH + COLUMN_GAP) or 0, (index - 1) * ROW_GAP)
   button:SetText(label)
   button:SetHandler("OnClicked", onClicked)
 
@@ -329,29 +418,21 @@ function this.BuildDumpTab()
   panel:SetAnchorFill(parent)
   panel:SetHidden(true)
 
-  addButton(
-    panel,
-    1,
-    "Meta dump",
-    "Names, quality, category, icon path and the category tree.\nWrites FurCDev_SavedVariables.meta.\nReload to write it to disk.",
-    function()
-      this.DumpMeta(true)
-    end
-  )
-  addButton(panel, 2, "Reload UI", "Flushes SavedVariables to disk.\nAsks first.", promptReload)
-
+  -- utils: one page dump per kind, two to a row, copied out of the output box
+  local nameRows = math.ceil(#NAME_KINDS / 2)
   for i, kind in ipairs(NAME_KINDS) do
     addButton(
       panel,
-      3 + i,
-      kind.label .. " names",
-      '[id] = "name" as Lua, shown in the output box.\nCopy it page by page. No reload needed.',
+      math.ceil(i / 2),
+      kind.label,
+      kind.label .. ' names: [id] = "name" as Lua, shown in the output box.\nCopy it page by page. No reload needed.',
       function()
         this.DumpNames(kind.key)
-      end
+      end,
+      2 - i % 2
     )
   end
-  local pagerY = (3 + #NAME_KINDS) * ROW_GAP
+  local pagerY = nameRows * ROW_GAP
   nameControls.prev =
     WINDOW_MANAGER:CreateControlFromVirtual("FurCDevControl_Dump_NamesPrev", panel, "ZO_DefaultButton")
   nameControls.prev:SetDimensions(50, BUTTON_HEIGHT)
@@ -373,15 +454,34 @@ function this.BuildDumpTab()
   nameControls.next:SetHandler("OnClicked", function()
     showNamePage(1)
   end)
+
+  -- all game data for the import scripts: AddOn doesn't know what the webui already knows, so we can't do a diff dump like with datamine or deletion detection
   addButton(
     panel,
-    5 + #NAME_KINDS,
-    "All names to file",
-    "Houses, quests, achievements and zones together.\nWrites FurCDev_SavedVariables.names.\nReload to write it to disk.",
+    nameRows + 3,
+    "Names dump",
+    "Items, houses, quests, achievements, zones, furnishing categories, themes and crafting skills together,\nplus which skill crafts which furnishing.\nWrites FurCDev_SavedVariables.names.\nReload UI writes it to disk.",
     function()
-      this.DumpAllNames()
+      this.DumpAllNames(true)
     end
   )
+  addButton(
+    panel,
+    nameRows + 4,
+    "Meta dump",
+    "Quality, category, theme, icon path and the category tree of every catalogued item.\nWrites FurCDev_SavedVariables.meta.\nReload UI writes it to disk.",
+    function()
+      this.DumpMeta(true)
+    end
+  )
+  reloadButton = addButton(
+    panel,
+    nameRows + 5,
+    "Reload UI",
+    "Writes the names and/or meta dumps to disk.\nAsks first.",
+    promptReload
+  )
+  reloadButton:SetEnabled(false)
   refreshNamePager()
   this.RegisterTab("dump", "Dump", panel)
 end
